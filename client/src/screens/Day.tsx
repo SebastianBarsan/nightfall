@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { RoomSnapshot } from "@nightfall/shared";
 import { Countdown } from "../components/Countdown";
-import { PlayerList } from "../components/PlayerList";
+import { Table } from "../components/Table";
 import { socket } from "../socket";
 
 export function Day({ snapshot }: { snapshot: RoomSnapshot }) {
@@ -22,7 +22,7 @@ export function Day({ snapshot }: { snapshot: RoomSnapshot }) {
         </p>
       ) : null}
 
-      <PlayerList players={snapshot.players} hostSocketId={snapshot.hostSocketId} mySocketId={socket.id ?? ""} />
+      <Table players={snapshot.players} hostSocketId={snapshot.hostSocketId} mySocketId={socket.id ?? ""} />
 
       <div className="chat">
         <div className="chat-log">

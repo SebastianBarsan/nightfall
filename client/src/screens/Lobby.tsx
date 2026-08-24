@@ -1,5 +1,5 @@
 import { MAX_PLAYERS, MIN_PLAYERS, type RoomSnapshot } from "@nightfall/shared";
-import { PlayerList } from "../components/PlayerList";
+import { Table } from "../components/Table";
 import { socket } from "../socket";
 
 export function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
@@ -15,7 +15,7 @@ export function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
       </div>
       <p className="hint">Share this code with the other players.</p>
 
-      <PlayerList players={snapshot.players} hostSocketId={snapshot.hostSocketId} mySocketId={socket.id ?? ""} />
+      <Table players={snapshot.players} hostSocketId={snapshot.hostSocketId} mySocketId={socket.id ?? ""} />
 
       <p className="hint">
         {count} / {MAX_PLAYERS} players ({MIN_PLAYERS}-{MAX_PLAYERS} required)

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RoomSnapshot } from "@nightfall/shared";
 import { CoinTap } from "../components/CoinTap";
+import { Table } from "../components/Table";
 import { socket } from "../socket";
 import type { GameUiState } from "../useGame";
 
@@ -18,6 +19,13 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
           Your role: <strong>{ui.myRole}</strong>
         </p>
       ) : null}
+
+      <Table
+        players={snapshot.players}
+        hostSocketId={snapshot.hostSocketId}
+        mySocketId={socket.id ?? ""}
+        seatBadge={(p) => (ui.fellowWolves?.includes(p.socketId) ? <span title="Fellow Werewolf">🐺</span> : null)}
+      />
 
       {ui.fellowWolves ? (
         <div className="panel">

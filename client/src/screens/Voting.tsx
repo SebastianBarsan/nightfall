@@ -1,5 +1,6 @@
 import type { RoomSnapshot } from "@nightfall/shared";
 import { Countdown } from "../components/Countdown";
+import { Table } from "../components/Table";
 import { socket } from "../socket";
 
 export function Voting({ snapshot }: { snapshot: RoomSnapshot }) {
@@ -14,6 +15,7 @@ export function Voting({ snapshot }: { snapshot: RoomSnapshot }) {
         <p className="hint">
           <Countdown endsAt={snapshot.hunterSubPhase.endsAt} />
         </p>
+        <Table players={snapshot.players} hostSocketId={snapshot.hostSocketId} mySocketId={mySocketId} />
         {isHunter ? (
           <>
             <p>You were eliminated, but as the Hunter you get one final shot. Choose someone to take with you:</p>
@@ -45,6 +47,13 @@ export function Voting({ snapshot }: { snapshot: RoomSnapshot }) {
       <p className="hint">
         Votes cast: {snapshot.votesCast.length} / {snapshot.players.filter((p) => p.connected).length}
       </p>
+
+      <Table
+        players={snapshot.players}
+        hostSocketId={snapshot.hostSocketId}
+        mySocketId={mySocketId}
+        seatBadge={(p) => (snapshot.votesCast.includes(p.socketId) ? <span title="Voted">✓</span> : null)}
+      />
 
       {iHaveVoted ? (
         <p>Your vote is in. Waiting for everyone else...</p>
