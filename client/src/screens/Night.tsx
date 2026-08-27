@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { PublicPlayer, RoomSnapshot } from "@nightfall/shared";
+import { Role, type PublicPlayer, type RoomSnapshot } from "@nightfall/shared";
 import { CoinTap } from "../components/CoinTap";
 import { Countdown } from "../components/Countdown";
 import { Table } from "../components/Table";
@@ -14,10 +14,14 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
   const mySeat = snapshot.players.findIndex((p) => p.socketId === socket.id);
   const n = snapshot.players.length;
 
-  const wolfCenterMode = !!ui.centerPromptIndices && !ui.centerResult;
-  const seerMode = ui.seerPromptActive;
-  const robberMode = ui.robberPromptActive;
-  const troublemakerMode = ui.troublemakerPromptActive;
+  // Belt-and-suspenders: even if a stale prompt flag slipped through, tie every tap-target
+  // highlight to the server's public "whose turn is it" field so it can never show outside the
+  // exact step it belongs to — not a moment before it starts, not a moment after it ends.
+  const currentStepRole = snapshot.nightStep?.role ?? null;
+  const wolfCenterMode = !!ui.centerPromptIndices && !ui.centerResult && currentStepRole === Role.WEREWOLF;
+  const seerMode = ui.seerPromptActive && currentStepRole === Role.SEER;
+  const robberMode = ui.robberPromptActive && currentStepRole === Role.ROBBER;
+  const troublemakerMode = ui.troublemakerPromptActive && currentStepRole === Role.TROUBLEMAKER;
 
   const [selectedCenters, setSelectedCenters] = useState<number[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);

@@ -13,6 +13,7 @@ export function buildSnapshot(room: ServerRoom): RoomSnapshot {
       seatIndex: i,
     })),
     settings: room.settings,
+    roleCounts: room.roleCounts,
     dayEndsAt: room.dayEndsAt,
     votingEndsAt: room.votingEndsAt,
     hunterSubPhase: room.hunterSubPhase

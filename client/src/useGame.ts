@@ -51,6 +51,7 @@ const initialState: GameUiState = {
 export function useGame() {
   const [state, setState] = useState<GameUiState>(initialState);
   const prevPhase = useRef<string | null>(null);
+  const prevNightStepEndsAt = useRef<number | null>(null);
 
   useEffect(() => {
     const onConnect = () => setState((s) => ({ ...s, connected: true }));
@@ -76,6 +77,23 @@ export function useGame() {
             troublemakerPromptActive: false,
             troublemakerAcked: false,
             insomniacResult: snapshot.phase === "NIGHT" ? s.insomniacResult : null,
+          };
+        }
+
+        // Every server-side night step (acted on, timed out, or never had an actor) always
+        // broadcasts a fresh nightStep.endsAt. Use that as the single source of truth for
+        // "is this still my turn" so a tappable card's highlight can never outlive the turn it
+        // belongs to, whether or not the player actually acted before time ran out.
+        const nightStepChanged = prevNightStepEndsAt.current !== (snapshot.nightStep?.endsAt ?? null);
+        prevNightStepEndsAt.current = snapshot.nightStep?.endsAt ?? null;
+        if (nightStepChanged) {
+          return {
+            ...s,
+            snapshot,
+            centerPromptIndices: null,
+            seerPromptActive: false,
+            robberPromptActive: false,
+            troublemakerPromptActive: false,
           };
         }
         return { ...s, snapshot };

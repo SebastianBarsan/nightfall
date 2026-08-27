@@ -41,11 +41,12 @@ This was built as a **prototype-first** pass, per explicit choice at kickoff:
   stands in for discussion instead.
 - **No auth.** Players just pick a display name each session; there's no
   persistent identity across games.
-- **Player count is 5–10, not 3–10.** The fixed role set in the spec (2
-  Werewolf, 1 each of Seer/Robber/Troublemaker/Insomniac/Hunter/Tanner = 8
-  cards) can't fit into an `N+3` card array when N is 3 or 4 — the spec's
-  "N−3 Villagers" formula would require more cards than slots exist. The
-  server enforces `MIN_PLAYERS = 5` and rejects game starts outside 5–10.
+- **Player count is 3–10.** The host configures the role deck per game from
+  the lobby (Werewolf count, optional Insomniac/Hunter, Villager count) —
+  Seer, Robber, Troublemaker, and Tanner are always exactly 1 each. The
+  server enforces `MIN_PLAYERS = 3`, at least 1 Werewolf (2 at 5+ players,
+  capped at half the table), and that the chosen counts add up to exactly
+  `N + 3` cards before a game can start.
 - **Room codes are `WORD-DDDD`** (e.g. `WOLF-4821`), matching the example in
   the spec literally, even though the spec's prose says "4-character."
 - **Turn-timing obfuscation is simplified.** The server does emit

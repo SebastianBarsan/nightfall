@@ -27,8 +27,161 @@ h1 {
 }
 
 .subtitle {
-  opacity: 0.75;
+  font-family: "Cormorant Garamond", "Segoe UI", serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  opacity: 0.85;
   margin-bottom: 2rem;
+}
+
+.home-scene {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  border-radius: 16px;
+  padding: 3rem 1.5rem 0;
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 70% 15%, #2a2f57 0%, #171a33 45%, #0b0c1a 85%);
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.5);
+}
+
+.moon {
+  position: absolute;
+  top: 8%;
+  right: 12%;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #f4f2ff 0%, #d7d3f5 45%, #b9b3e0 100%);
+  box-shadow:
+    0 0 60px 20px rgba(201, 194, 255, 0.25),
+    0 0 120px 60px rgba(147, 138, 214, 0.12);
+}
+
+.fog {
+  position: absolute;
+  left: -20%;
+  right: -20%;
+  bottom: 12%;
+  height: 90px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(200, 195, 240, 0.09) 30%,
+    rgba(200, 195, 240, 0.14) 55%,
+    transparent 90%
+  );
+  filter: blur(14px);
+  animation: home-fog-drift 22s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes home-fog-drift {
+  from {
+    transform: translateX(-4%);
+  }
+  to {
+    transform: translateX(4%);
+  }
+}
+
+.graveyard-svg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100px;
+  opacity: 0.9;
+}
+
+.fireflies {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.firefly {
+  position: absolute;
+  bottom: 18%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #cdb8ff;
+  box-shadow: 0 0 6px 2px rgba(205, 184, 255, 0.8);
+  opacity: 0;
+  animation: home-firefly-flicker 7s ease-in-out infinite;
+}
+.firefly-0 {
+  left: 14%;
+  animation-delay: 0s;
+}
+.firefly-1 {
+  left: 28%;
+  animation-delay: 1.2s;
+}
+.firefly-2 {
+  left: 46%;
+  animation-delay: 2.6s;
+}
+.firefly-3 {
+  left: 62%;
+  animation-delay: 0.6s;
+}
+.firefly-4 {
+  left: 78%;
+  animation-delay: 3.4s;
+}
+.firefly-5 {
+  left: 88%;
+  animation-delay: 1.9s;
+}
+
+@keyframes home-firefly-flicker {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.3;
+    transform: translateY(-24px);
+  }
+  80% {
+    opacity: 0.8;
+    transform: translateY(-40px);
+  }
+}
+
+.home-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  padding-bottom: 3rem;
+}
+
+.home-title {
+  font-family: "Cinzel", "Segoe UI", serif;
+  font-size: clamp(2.4rem, 6vw, 3.2rem);
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: #ece9ff;
+  text-shadow:
+    0 0 24px rgba(180, 168, 255, 0.5),
+    0 0 4px rgba(180, 168, 255, 0.6);
+}
+
+.home-content .field,
+.home-content .home-actions {
+  text-align: left;
 }
 
 .field {
@@ -289,6 +442,64 @@ h1 {
   text-decoration: underline;
   padding: 0;
   color: #b9a6ff;
+}
+
+.roles-panel {
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+.roles-list {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.role-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #23264a;
+}
+.role-row:last-of-type {
+  border-bottom: none;
+}
+.role-name {
+  font-weight: 600;
+}
+.role-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.stepper button {
+  width: 1.8rem;
+  height: 1.8rem;
+  padding: 0;
+  line-height: 1;
+}
+.stepper span {
+  min-width: 1.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.role-total {
+  text-align: right;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+.role-total.ok {
+  color: #7fe0a0;
+}
+.role-total.mismatch {
+  color: #ff8a8a;
 }
 
 .log {

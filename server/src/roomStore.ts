@@ -1,10 +1,14 @@
 import {
   ActionLogEntry,
   ChatMessage,
+  defaultRoleCounts,
   DEFAULT_DAY_DURATION_SEC,
   GamePhase,
   GameResult,
+  maxWerewolfCount,
+  minWerewolfCount,
   Role,
+  RoleCounts,
 } from "@nightfall/shared";
 
 export interface Seat {
@@ -34,6 +38,8 @@ export interface ServerRoom {
   seats: Seat[];
   phase: GamePhase;
   settings: { dayDurationSec: number };
+  roleCounts: RoleCounts;
+  roleCountsCustomized: boolean;
 
   cardArray: Role[] | null;
   originalArray: Role[] | null;
@@ -88,6 +94,8 @@ export function createRoom(hostSocketId: string, hostName: string): ServerRoom {
     seats: [{ socketId: hostSocketId, name: hostName, connected: true }],
     phase: GamePhase.LOBBY,
     settings: { dayDurationSec: DEFAULT_DAY_DURATION_SEC },
+    roleCounts: defaultRoleCounts(1),
+    roleCountsCustomized: false,
     cardArray: null,
     originalArray: null,
     actionLog: [],
@@ -123,4 +131,24 @@ export function deleteRoom(code: string): void {
 
 export function seatIndexOf(room: ServerRoom, socketId: string): number {
   return room.seats.findIndex((s) => s.socketId === socketId);
+}
+
+/**
+ * Keeps roleCounts sane whenever the seat count changes in the lobby. Before the host has
+ * touched the role editor, just recompute a fresh default so the game stays startable with no
+ * setup. Once customized, only clamp Werewolf count back into its (now-new) legal range — every
+ * other field is left alone; a resulting slot-count mismatch surfaces to the host to fix by hand.
+ */
+export function repairRoleCounts(room: ServerRoom): void {
+  const n = room.seats.length;
+  if (!room.roleCountsCustomized) {
+    room.roleCounts = defaultRoleCounts(n);
+    return;
+  }
+  const min = minWerewolfCount(n);
+  const max = maxWerewolfCount(n);
+  const werewolf = Math.min(Math.max(room.roleCounts.werewolf, min), max);
+  if (werewolf !== room.roleCounts.werewolf) {
+    room.roleCounts = { ...room.roleCounts, werewolf };
+  }
 }

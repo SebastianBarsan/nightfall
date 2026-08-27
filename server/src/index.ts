@@ -13,12 +13,14 @@ import {
   createRoom,
   findRoomBySocket,
   getRoom,
+  repairRoleCounts,
   seatIndexOf,
   ServerRoom,
 } from "./roomStore.js";
 import {
   broadcastState,
   cleanupEmptyRoom,
+  configureRoles,
   handleChat,
   handleHunterTarget,
   handleRobberTarget,
@@ -69,6 +71,7 @@ io.on("connection", (socket) => {
     if (room.seats.length >= MAX_PLAYERS) return cb({ ok: false, error: "Room is full." });
     room.seats.push({ socketId: socket.id, name: cleanName, connected: true });
     socket.join(room.code);
+    repairRoleCounts(room);
     cb({ ok: true });
     broadcastState(io, room);
   });
@@ -77,6 +80,11 @@ io.on("connection", (socket) => {
     const room = findRoomBySocket(socket.id);
     if (!room) return;
     startGame(io, room, socket.id);
+  });
+
+  socket.on("room:configureRoles", ({ roleCounts }) => {
+    const room = findRoomBySocket(socket.id);
+    if (room) configureRoles(io, room, socket.id, roleCounts);
   });
 
   socket.on("room:playAgain", () => {
@@ -140,6 +148,7 @@ function handleDisconnect(room: ServerRoom, socketId: string): void {
     if (room.hostSocketId === socketId && room.seats.length > 0) {
       room.hostSocketId = room.seats[0].socketId;
     }
+    repairRoleCounts(room);
   } else {
     room.seats[seat].connected = false;
   }

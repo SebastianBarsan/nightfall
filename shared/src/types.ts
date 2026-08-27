@@ -1,4 +1,4 @@
-import type { Role } from "./roles.js";
+import type { Role, RoleCounts } from "./roles.js";
 
 export const GamePhase = {
   LOBBY: "LOBBY",
@@ -58,6 +58,7 @@ export interface RoomSnapshot {
   phase: GamePhase;
   players: PublicPlayer[];
   settings: { dayDurationSec: number };
+  roleCounts: RoleCounts;
   dayEndsAt: number | null;
   votingEndsAt: number | null;
   hunterSubPhase: { hunterSocketId: string; endsAt: number } | null;

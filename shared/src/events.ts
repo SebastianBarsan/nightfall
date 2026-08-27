@@ -1,4 +1,4 @@
-import type { Role } from "./roles.js";
+import type { Role, RoleCounts } from "./roles.js";
 import type { ChatMessage, RoomSnapshot } from "./types.js";
 
 // ---- Client -> Server ----
@@ -7,6 +7,7 @@ export interface ClientToServerEvents {
   "room:join": (payload: { code: string; name: string }, cb: (res: { ok: true } | { ok: false; error: string }) => void) => void;
   "room:start": () => void;
   "room:playAgain": () => void;
+  "room:configureRoles": (payload: { roleCounts: RoleCounts }) => void;
 
   "night:werewolf:viewCenter": (payload: { centerIndex: number }) => void;
   "night:seer:target": (payload: { playerSeat: number | null; centerIndices: number[] | null }) => void;
