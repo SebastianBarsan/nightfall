@@ -1,15 +1,91 @@
-import { useState } from "react";
-import type { RoomSnapshot } from "@nightfall/shared";
+import { useEffect, useState } from "react";
+import type { PublicPlayer, RoomSnapshot } from "@nightfall/shared";
 import { CoinTap } from "../components/CoinTap";
+import { Countdown } from "../components/Countdown";
 import { Table } from "../components/Table";
 import { socket } from "../socket";
 import type { GameUiState } from "../useGame";
 
+function formatRole(role: string): string {
+  return role.charAt(0) + role.slice(1).toLowerCase();
+}
+
 export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiState }) {
   const mySeat = snapshot.players.findIndex((p) => p.socketId === socket.id);
   const n = snapshot.players.length;
-  const centerSeats = [n, n + 1, n + 2];
-  const others = snapshot.players.filter((p) => p.socketId !== socket.id);
+
+  const wolfCenterMode = !!ui.centerPromptIndices && !ui.centerResult;
+  const seerMode = ui.seerPromptActive;
+  const robberMode = ui.robberPromptActive;
+  const troublemakerMode = ui.troublemakerPromptActive;
+
+  const [selectedCenters, setSelectedCenters] = useState<number[]>([]);
+  const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+
+  // Local tap selections only make sense for the prompt they were made under.
+  useEffect(() => {
+    setSelectedCenters([]);
+    setSelectedSeats([]);
+  }, [wolfCenterMode, seerMode, robberMode, troublemakerMode]);
+
+  const selectableSeatIds = new Set<string>();
+  if (seerMode || robberMode || troublemakerMode) {
+    snapshot.players.forEach((p) => {
+      if (p.socketId !== socket.id) selectableSeatIds.add(p.socketId);
+    });
+  }
+  const selectedSeatIds = new Set(
+    selectedSeats.map((seat) => snapshot.players[seat]?.socketId).filter((id): id is string => Boolean(id)),
+  );
+
+  const selectableCenters = new Set<number>();
+  if (seerMode) [n, n + 1, n + 2].forEach((c) => selectableCenters.add(c));
+  if (wolfCenterMode) ui.centerPromptIndices!.forEach((c) => selectableCenters.add(c));
+  const selectedCentersSet = new Set(selectedCenters);
+
+  const handleSeatClick = (p: PublicPlayer) => {
+    if (seerMode) {
+      socket.emit("night:seer:target", { playerSeat: p.seatIndex, centerIndices: null });
+      return;
+    }
+    if (robberMode) {
+      socket.emit("night:robber:target", { playerSeat: p.seatIndex });
+      return;
+    }
+    if (troublemakerMode) {
+      setSelectedSeats((cur) => {
+        if (cur.includes(p.seatIndex)) return cur.filter((s) => s !== p.seatIndex);
+        if (cur.length >= 2) return cur;
+        return [...cur, p.seatIndex];
+      });
+    }
+  };
+
+  const handleCenterClick = (globalIndex: number) => {
+    if (wolfCenterMode) {
+      socket.emit("night:werewolf:viewCenter", { centerIndex: globalIndex });
+      return;
+    }
+    if (seerMode) {
+      setSelectedCenters((cur) => {
+        if (cur.includes(globalIndex)) return cur.filter((c) => c !== globalIndex);
+        if (cur.length >= 2) return cur;
+        return [...cur, globalIndex];
+      });
+    }
+  };
+
+  const confirmSeerCenters = () => {
+    if (selectedCenters.length !== 2) return;
+    socket.emit("night:seer:target", { playerSeat: null, centerIndices: selectedCenters });
+  };
+
+  const confirmTroublemakerSwap = () => {
+    if (selectedSeats.length !== 2) return;
+    socket.emit("night:troublemaker:swap", { seatA: selectedSeats[0], seatB: selectedSeats[1] });
+  };
+
+  const isMyTurn = wolfCenterMode || seerMode || robberMode || troublemakerMode;
 
   return (
     <div className="screen night">
@@ -20,11 +96,23 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </p>
       ) : null}
 
+      {snapshot.nightStep ? (
+        <div className="turn-banner">
+          {formatRole(snapshot.nightStep.role)} phase — <Countdown endsAt={snapshot.nightStep.endsAt} />
+        </div>
+      ) : null}
+
       <Table
         players={snapshot.players}
         hostSocketId={snapshot.hostSocketId}
         mySocketId={socket.id ?? ""}
         seatBadge={(p) => (ui.fellowWolves?.includes(p.socketId) ? <span title="Fellow Werewolf">🐺</span> : null)}
+        onSeatClick={handleSeatClick}
+        selectableSeatIds={selectableSeatIds}
+        selectedSeatIds={selectedSeatIds}
+        onCenterClick={handleCenterClick}
+        selectableCenterIndices={selectableCenters}
+        selectedCenterIndices={selectedCentersSet}
       />
 
       {ui.fellowWolves ? (
@@ -42,9 +130,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </div>
       ) : null}
 
-      {ui.centerPromptIndices && !ui.centerResult ? (
-        <WerewolfCenterPrompt indices={ui.centerPromptIndices} baseIndex={n} />
-      ) : null}
+      {wolfCenterMode ? <p className="hint">No other player is a Werewolf. Tap a center card to peek at it.</p> : null}
       {ui.centerResult ? (
         <div className="panel">
           <h2>Center Card Revealed</h2>
@@ -54,14 +140,22 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </div>
       ) : null}
 
-      {ui.seerPromptActive ? <SeerPrompt others={others} centerSeats={centerSeats} /> : null}
+      {seerMode ? (
+        <>
+          <p className="hint">Tap a player's card to view it, or tap two center cards then confirm.</p>
+          {selectedCenters.length === 2 ? (
+            <div className="choice-row">
+              <button onClick={confirmSeerCenters}>Confirm</button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
       {ui.seerResult ? (
         <div className="panel">
           <h2>Vision</h2>
           {ui.seerResult.viewedPlayerSeat !== null ? (
             <p>
-              {snapshot.players[ui.seerResult.viewedPlayerSeat]?.name}'s card:{" "}
-              <strong>{ui.seerResult.roles[0]}</strong>
+              {snapshot.players[ui.seerResult.viewedPlayerSeat]?.name}'s card: <strong>{ui.seerResult.roles[0]}</strong>
             </p>
           ) : (
             <p>
@@ -71,7 +165,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </div>
       ) : null}
 
-      {ui.robberPromptActive ? <RobberPrompt others={others} /> : null}
+      {robberMode ? <p className="hint">Tap another player's card to swap it with yours.</p> : null}
       {ui.robberResult ? (
         <div className="panel">
           <h2>You Robbed a Card</h2>
@@ -81,7 +175,16 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </div>
       ) : null}
 
-      {ui.troublemakerPromptActive ? <TroublemakerPrompt others={others} /> : null}
+      {troublemakerMode ? (
+        <>
+          <p className="hint">Tap two other players' cards to swap them.</p>
+          {selectedSeats.length === 2 ? (
+            <div className="choice-row">
+              <button onClick={confirmTroublemakerSwap}>Confirm Swap</button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
       {ui.troublemakerAcked ? (
         <div className="panel">
           <h2>Cards Swapped</h2>
@@ -98,149 +201,9 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </div>
       ) : null}
 
-      {!ui.fellowWolves &&
-      !ui.centerPromptIndices &&
-      !ui.centerResult &&
-      !ui.seerPromptActive &&
-      !ui.robberPromptActive &&
-      !ui.troublemakerPromptActive ? (
-        <CoinTap spawns={ui.coinSpawns} />
-      ) : null}
+      {!ui.fellowWolves && !isMyTurn ? <CoinTap spawns={ui.coinSpawns} /> : null}
 
       <p className="hint">Mine: seat {mySeat}</p>
-    </div>
-  );
-}
-
-function WerewolfCenterPrompt({ indices, baseIndex }: { indices: number[]; baseIndex: number }) {
-  return (
-    <div className="panel">
-      <h2>Lone Wolf</h2>
-      <p>No other player is a Werewolf. Peek at a center card:</p>
-      <div className="choice-row">
-        {indices.map((idx) => (
-          <button key={idx} onClick={() => socket.emit("night:werewolf:viewCenter", { centerIndex: idx })}>
-            Center {idx - baseIndex + 1}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SeerPrompt({
-  others,
-  centerSeats,
-}: {
-  others: RoomSnapshot["players"];
-  centerSeats: number[];
-}) {
-  const [mode, setMode] = useState<"player" | "center">("player");
-  const [selectedCenters, setSelectedCenters] = useState<number[]>([]);
-
-  const toggleCenter = (seat: number) => {
-    setSelectedCenters((cur) =>
-      cur.includes(seat) ? cur.filter((c) => c !== seat) : cur.length < 2 ? [...cur, seat] : cur,
-    );
-  };
-
-  const submitPlayer = (seat: number) => {
-    socket.emit("night:seer:target", { playerSeat: seat, centerIndices: null });
-  };
-
-  const submitCenters = () => {
-    if (selectedCenters.length !== 2) return;
-    socket.emit("night:seer:target", { playerSeat: null, centerIndices: selectedCenters });
-  };
-
-  return (
-    <div className="panel">
-      <h2>Seer</h2>
-      <div className="choice-row">
-        <button className={mode === "player" ? "active" : ""} onClick={() => setMode("player")}>
-          View a player
-        </button>
-        <button className={mode === "center" ? "active" : ""} onClick={() => setMode("center")}>
-          View two center cards
-        </button>
-      </div>
-
-      {mode === "player" ? (
-        <div className="choice-row">
-          {others.map((p) => (
-            <button key={p.socketId} onClick={() => submitPlayer(p.seatIndex)}>
-              {p.name}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="choice-row">
-            {centerSeats.map((seat, i) => (
-              <button
-                key={seat}
-                className={selectedCenters.includes(seat) ? "active" : ""}
-                onClick={() => toggleCenter(seat)}
-              >
-                Center {i + 1}
-              </button>
-            ))}
-          </div>
-          <button disabled={selectedCenters.length !== 2} onClick={submitCenters}>
-            Confirm
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-function RobberPrompt({ others }: { others: RoomSnapshot["players"] }) {
-  return (
-    <div className="panel">
-      <h2>Robber</h2>
-      <p>Swap your card with another player's:</p>
-      <div className="choice-row">
-        {others.map((p) => (
-          <button key={p.socketId} onClick={() => socket.emit("night:robber:target", { playerSeat: p.seatIndex })}>
-            {p.name}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function TroublemakerPrompt({ others }: { others: RoomSnapshot["players"] }) {
-  const [selected, setSelected] = useState<number[]>([]);
-
-  const toggle = (seat: number) => {
-    setSelected((cur) => (cur.includes(seat) ? cur.filter((c) => c !== seat) : cur.length < 2 ? [...cur, seat] : cur));
-  };
-
-  const submit = () => {
-    if (selected.length !== 2) return;
-    socket.emit("night:troublemaker:swap", { seatA: selected[0], seatB: selected[1] });
-  };
-
-  return (
-    <div className="panel">
-      <h2>Troublemaker</h2>
-      <p>Choose two other players to swap (you won't see the result):</p>
-      <div className="choice-row">
-        {others.map((p) => (
-          <button
-            key={p.socketId}
-            className={selected.includes(p.seatIndex) ? "active" : ""}
-            onClick={() => toggle(p.seatIndex)}
-          >
-            {p.name}
-          </button>
-        ))}
-      </div>
-      <button disabled={selected.length !== 2} onClick={submit}>
-        Confirm Swap
-      </button>
     </div>
   );
 }

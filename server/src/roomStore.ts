@@ -25,6 +25,7 @@ export interface NightStepState {
   activeSeats: number[];
   timer: NodeJS.Timeout | null;
   acted: Set<number>;
+  endsAt: number;
 }
 
 export interface ServerRoom {

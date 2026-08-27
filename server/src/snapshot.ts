@@ -18,6 +18,9 @@ export function buildSnapshot(room: ServerRoom): RoomSnapshot {
     hunterSubPhase: room.hunterSubPhase
       ? { hunterSocketId: room.hunterSubPhase.hunterSocketId, endsAt: room.hunterSubPhase.endsAt }
       : null,
+    nightStep: room.currentNightStep
+      ? { role: room.currentNightStep.role, endsAt: room.currentNightStep.endsAt }
+      : null,
     votesCast: Array.from(room.votes.keys()),
     chat: room.chat,
     result: room.result,

@@ -148,19 +148,40 @@ h1 {
   background: repeating-linear-gradient(45deg, #6c4fd1 0px, #6c4fd1 4px, #8f77ea 4px, #8f77ea 8px);
   border: 1px solid rgba(11, 12, 26, 0.5);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.seat-card.selectable {
+  cursor: pointer;
+  box-shadow: 0 0 0 3px #ffcf6e, 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.seat-card.selectable:hover,
+.seat-card.selectable:focus-visible {
+  transform: scale(1.1);
+  outline: none;
+}
+.seat-card.selected {
+  box-shadow: 0 0 0 3px #6cff9f, 0 2px 6px rgba(0, 0, 0, 0.45);
+  transform: translateY(-4px);
 }
 
 .table-center {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: clamp(28px, 7vw, 52px);
-  aspect-ratio: 2.5 / 3.5;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 0.5rem;
 }
-.table-center .seat-card {
-  position: absolute;
-  inset: 0;
-  transform: translate(-50%, -50%) rotate(calc(var(--fan) * 9deg)) translateX(calc(var(--fan) * 6px));
+
+.turn-banner {
+  text-align: center;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  background: #23264a;
+  border: 1px solid #6c4fd1;
+  border-radius: 8px;
 }
 
 .panel {

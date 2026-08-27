@@ -61,6 +61,8 @@ export interface RoomSnapshot {
   dayEndsAt: number | null;
   votingEndsAt: number | null;
   hunterSubPhase: { hunterSocketId: string; endsAt: number } | null;
+  /** Which role is currently acting and when its turn ends. Never reveals *who* holds the role. */
+  nightStep: { role: Role; endsAt: number } | null;
   votesCast: string[]; // socketIds who have voted, not who they voted for
   chat: ChatMessage[];
   result: GameResult | null;
@@ -68,7 +70,7 @@ export interface RoomSnapshot {
 
 export const MIN_NAME_LENGTH = 1;
 export const MAX_NAME_LENGTH = 20;
-export const DEFAULT_DAY_DURATION_SEC = 180;
-export const NIGHT_STEP_DURATION_MS = 15_000;
+export const DEFAULT_DAY_DURATION_SEC = 30;
+export const NIGHT_STEP_DURATION_MS = 8_000;
 export const HUNTER_SUBPHASE_DURATION_MS = 10_000;
-export const VOTING_DURATION_MS = 30_000;
+export const VOTING_DURATION_MS = 15_000;

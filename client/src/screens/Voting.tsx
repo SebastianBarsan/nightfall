@@ -9,26 +9,24 @@ export function Voting({ snapshot }: { snapshot: RoomSnapshot }) {
 
   if (snapshot.phase === "HUNTER_RESOLUTION" && snapshot.hunterSubPhase) {
     const isHunter = snapshot.hunterSubPhase.hunterSocketId === mySocketId;
+    const selectableSeatIds = isHunter
+      ? new Set(snapshot.players.filter((p) => p.socketId !== mySocketId).map((p) => p.socketId))
+      : undefined;
     return (
       <div className="screen voting">
         <h1>🏹 The Hunter's Last Shot</h1>
         <p className="hint">
           <Countdown endsAt={snapshot.hunterSubPhase.endsAt} />
         </p>
-        <Table players={snapshot.players} hostSocketId={snapshot.hostSocketId} mySocketId={mySocketId} />
+        <Table
+          players={snapshot.players}
+          hostSocketId={snapshot.hostSocketId}
+          mySocketId={mySocketId}
+          onSeatClick={isHunter ? (p) => socket.emit("hunter:target", { targetSocketId: p.socketId }) : undefined}
+          selectableSeatIds={selectableSeatIds}
+        />
         {isHunter ? (
-          <>
-            <p>You were eliminated, but as the Hunter you get one final shot. Choose someone to take with you:</p>
-            <div className="choice-row">
-              {snapshot.players
-                .filter((p) => p.socketId !== mySocketId)
-                .map((p) => (
-                  <button key={p.socketId} onClick={() => socket.emit("hunter:target", { targetSocketId: p.socketId })}>
-                    {p.name}
-                  </button>
-                ))}
-            </div>
-          </>
+          <p>You were eliminated, but as the Hunter you get one final shot. Tap someone to take with you.</p>
         ) : (
           <p>The Hunter is choosing a final target...</p>
         )}
@@ -53,20 +51,18 @@ export function Voting({ snapshot }: { snapshot: RoomSnapshot }) {
         hostSocketId={snapshot.hostSocketId}
         mySocketId={mySocketId}
         seatBadge={(p) => (snapshot.votesCast.includes(p.socketId) ? <span title="Voted">✓</span> : null)}
+        onSeatClick={!iHaveVoted ? (p) => socket.emit("vote:cast", { targetSocketId: p.socketId }) : undefined}
+        selectableSeatIds={
+          !iHaveVoted
+            ? new Set(snapshot.players.filter((p) => p.socketId !== mySocketId).map((p) => p.socketId))
+            : undefined
+        }
       />
 
       {iHaveVoted ? (
         <p>Your vote is in. Waiting for everyone else...</p>
       ) : (
-        <div className="choice-row">
-          {snapshot.players
-            .filter((p) => p.socketId !== mySocketId)
-            .map((p) => (
-              <button key={p.socketId} onClick={() => socket.emit("vote:cast", { targetSocketId: p.socketId })}>
-                {p.name}
-              </button>
-            ))}
-        </div>
+        <p className="hint">Tap a player's card to cast your vote.</p>
       )}
     </div>
   );

@@ -126,7 +126,14 @@ function runNightStep(io: IO, room: ServerRoom): void {
         actorName: null,
         description: `Werewolves recognized each other: ${wolves.map((s) => nameAt(room, s)).join(", ")}.`,
       });
-      room.currentNightStep = { role, activeSeats: wolves, timer: null, acted: new Set(wolves) };
+      room.currentNightStep = {
+        role,
+        activeSeats: wolves,
+        timer: null,
+        acted: new Set(wolves),
+        endsAt: Date.now() + NIGHT_STEP_DURATION_MS,
+      };
+      broadcastState(io, room);
       pingInactiveSockets(io, room, wolves);
       // Informational only — brief pause so clients can render it, then advance.
       const timer = setTimeout(() => advanceNightStep(io, room), NIGHT_STEP_DURATION_MS);
@@ -135,7 +142,14 @@ function runNightStep(io: IO, room: ServerRoom): void {
     }
     // Lone wolf: chooses a center card to peek at.
     const wolfSeat = wolves[0];
-    room.currentNightStep = { role, activeSeats: [wolfSeat], timer: null, acted: new Set() };
+    room.currentNightStep = {
+      role,
+      activeSeats: [wolfSeat],
+      timer: null,
+      acted: new Set(),
+      endsAt: Date.now() + NIGHT_STEP_DURATION_MS,
+    };
+    broadcastState(io, room);
     io.to(room.seats[wolfSeat].socketId).emit("werewolf:centerPrompt", {
       availableCenterIndices: centerIndices(room),
     });
@@ -156,7 +170,14 @@ function runNightStep(io: IO, room: ServerRoom): void {
     const seers = originalSeatsWithRole(room, Role.SEER);
     if (seers.length === 0) return skipStep(io, room, role);
     const seat = seers[0];
-    room.currentNightStep = { role, activeSeats: [seat], timer: null, acted: new Set() };
+    room.currentNightStep = {
+      role,
+      activeSeats: [seat],
+      timer: null,
+      acted: new Set(),
+      endsAt: Date.now() + NIGHT_STEP_DURATION_MS,
+    };
+    broadcastState(io, room);
     io.to(room.seats[seat].socketId).emit("seer:prompt");
     pingInactiveSockets(io, room, [seat]);
     room.currentNightStep.timer = setTimeout(() => {
@@ -175,7 +196,14 @@ function runNightStep(io: IO, room: ServerRoom): void {
     const robbers = originalSeatsWithRole(room, Role.ROBBER);
     if (robbers.length === 0) return skipStep(io, room, role);
     const seat = robbers[0];
-    room.currentNightStep = { role, activeSeats: [seat], timer: null, acted: new Set() };
+    room.currentNightStep = {
+      role,
+      activeSeats: [seat],
+      timer: null,
+      acted: new Set(),
+      endsAt: Date.now() + NIGHT_STEP_DURATION_MS,
+    };
+    broadcastState(io, room);
     io.to(room.seats[seat].socketId).emit("robber:prompt");
     pingInactiveSockets(io, room, [seat]);
     room.currentNightStep.timer = setTimeout(() => {
@@ -194,7 +222,14 @@ function runNightStep(io: IO, room: ServerRoom): void {
     const tms = originalSeatsWithRole(room, Role.TROUBLEMAKER);
     if (tms.length === 0) return skipStep(io, room, role);
     const seat = tms[0];
-    room.currentNightStep = { role, activeSeats: [seat], timer: null, acted: new Set() };
+    room.currentNightStep = {
+      role,
+      activeSeats: [seat],
+      timer: null,
+      acted: new Set(),
+      endsAt: Date.now() + NIGHT_STEP_DURATION_MS,
+    };
+    broadcastState(io, room);
     io.to(room.seats[seat].socketId).emit("troublemaker:prompt");
     pingInactiveSockets(io, room, [seat]);
     room.currentNightStep.timer = setTimeout(() => {
@@ -221,7 +256,14 @@ function runNightStep(io: IO, room: ServerRoom): void {
       actorName: nameAt(room, seat),
       description: `Insomniac checked their card and is now ${currentRole}.`,
     });
-    room.currentNightStep = { role, activeSeats: [seat], timer: null, acted: new Set([seat]) };
+    room.currentNightStep = {
+      role,
+      activeSeats: [seat],
+      timer: null,
+      acted: new Set([seat]),
+      endsAt: Date.now() + NIGHT_STEP_DURATION_MS,
+    };
+    broadcastState(io, room);
     pingInactiveSockets(io, room, [seat]);
     room.currentNightStep.timer = setTimeout(() => advanceNightStep(io, room), NIGHT_STEP_DURATION_MS);
     return;
