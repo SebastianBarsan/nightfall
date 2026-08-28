@@ -4,7 +4,9 @@ import {
   maxWerewolfCount,
   MIN_PLAYERS,
   minWerewolfCount,
+  Role,
   roleCountsTotal,
+  roleDisplayName,
   totalCardSlots,
   validateRoleCounts,
   type RoleCounts,
@@ -52,10 +54,6 @@ export function Lobby({ snapshot }: { snapshot: RoomSnapshot }) {
   );
 }
 
-function formatRole(role: string): string {
-  return role.charAt(0) + role.slice(1).toLowerCase();
-}
-
 function RoleSummary({ playerCount, roleCounts }: { playerCount: number; roleCounts: RoleCounts }) {
   const total = roleCountsTotal(roleCounts);
   const expected = totalCardSlots(playerCount);
@@ -63,13 +61,13 @@ function RoleSummary({ playerCount, roleCounts }: { playerCount: number; roleCou
     <div className="panel roles-panel">
       <h2>Roles in play</h2>
       <ul className="roles-list">
-        <li>Werewolf x{roleCounts.werewolf}</li>
+        <li>{roleDisplayName(Role.WEREWOLF)} x{roleCounts.werewolf}</li>
         {MANDATORY_SINGLE_ROLES.map((r) => (
-          <li key={r}>{formatRole(r)} x1</li>
+          <li key={r}>{roleDisplayName(r)} x1</li>
         ))}
-        {roleCounts.insomniac ? <li>Insomniac x1</li> : null}
-        {roleCounts.hunter ? <li>Hunter x1</li> : null}
-        <li>Villager x{roleCounts.villager}</li>
+        {roleCounts.insomniac ? <li>{roleDisplayName(Role.INSOMNIAC)} x1</li> : null}
+        {roleCounts.hunter ? <li>{roleDisplayName(Role.HUNTER)} x1</li> : null}
+        <li>{roleDisplayName(Role.VILLAGER)} x{roleCounts.villager}</li>
       </ul>
       <p className="hint">
         {total} / {expected} cards
@@ -91,7 +89,7 @@ function RoleEditor({ playerCount, roleCounts }: { playerCount: number; roleCoun
       <h2>Roles in play</h2>
 
       <div className="role-row">
-        <span className="role-name">Werewolf</span>
+        <span className="role-name">{roleDisplayName(Role.WEREWOLF)}</span>
         <div className="stepper">
           <button disabled={roleCounts.werewolf <= min} onClick={() => push({ ...roleCounts, werewolf: roleCounts.werewolf - 1 })}>
             −
@@ -108,13 +106,13 @@ function RoleEditor({ playerCount, roleCounts }: { playerCount: number; roleCoun
 
       {MANDATORY_SINGLE_ROLES.map((r) => (
         <div className="role-row" key={r}>
-          <span className="role-name">{formatRole(r)}</span>
+          <span className="role-name">{roleDisplayName(r)}</span>
           <span className="hint">always 1</span>
         </div>
       ))}
 
       <div className="role-row">
-        <span className="role-name">Insomniac</span>
+        <span className="role-name">{roleDisplayName(Role.INSOMNIAC)}</span>
         <label className="role-toggle">
           <input
             type="checkbox"
@@ -126,7 +124,7 @@ function RoleEditor({ playerCount, roleCounts }: { playerCount: number; roleCoun
       </div>
 
       <div className="role-row">
-        <span className="role-name">Hunter</span>
+        <span className="role-name">{roleDisplayName(Role.HUNTER)}</span>
         <label className="role-toggle">
           <input
             type="checkbox"
@@ -138,7 +136,7 @@ function RoleEditor({ playerCount, roleCounts }: { playerCount: number; roleCoun
       </div>
 
       <div className="role-row">
-        <span className="role-name">Villager</span>
+        <span className="role-name">{roleDisplayName(Role.VILLAGER)}</span>
         <div className="stepper">
           <button disabled={roleCounts.villager <= 0} onClick={() => push({ ...roleCounts, villager: roleCounts.villager - 1 })}>
             −

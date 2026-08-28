@@ -11,6 +11,23 @@ export const Role = {
 
 export type Role = (typeof Role)[keyof typeof Role];
 
+/** Player-facing name for each role. Internal Role identifiers stay as-is everywhere else —
+ * this is the single place that maps them to the current theme's flavor names. */
+export const ROLE_DISPLAY_NAME: Record<Role, string> = {
+  [Role.WEREWOLF]: "Vampire",
+  [Role.SEER]: "Oracle",
+  [Role.ROBBER]: "Thief",
+  [Role.TROUBLEMAKER]: "Troublemaker",
+  [Role.INSOMNIAC]: "Sentry",
+  [Role.HUNTER]: "Hunter",
+  [Role.TANNER]: "Jester",
+  [Role.VILLAGER]: "Mortal",
+};
+
+export function roleDisplayName(role: Role): string {
+  return ROLE_DISPLAY_NAME[role];
+}
+
 export const MIN_PLAYERS = 3;
 export const MAX_PLAYERS = 10;
 export const CENTER_CARD_COUNT = 3;

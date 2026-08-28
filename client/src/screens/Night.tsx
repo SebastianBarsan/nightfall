@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { Role, type PublicPlayer, type RoomSnapshot } from "@nightfall/shared";
 import { CoinTap } from "../components/CoinTap";
 import { Countdown } from "../components/Countdown";
+import { GameScene } from "../components/GameScene";
+import { RoleReveal } from "../components/RoleReveal";
 import { Table } from "../components/Table";
 import { socket } from "../socket";
 import type { GameUiState } from "../useGame";
-
-function formatRole(role: string): string {
-  return role.charAt(0) + role.slice(1).toLowerCase();
-}
+import { roleColor, roleDisplayName } from "../roleTheme";
 
 export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiState }) {
   const mySeat = snapshot.players.findIndex((p) => p.socketId === socket.id);
@@ -25,6 +24,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
 
   const [selectedCenters, setSelectedCenters] = useState<number[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [revealDismissed, setRevealDismissed] = useState(false);
 
   // Local tap selections only make sense for the prompt they were made under.
   useEffect(() => {
@@ -93,24 +93,29 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
 
   return (
     <div className="screen night">
-      <h1>🌑 Night</h1>
-      {ui.myRole ? (
-        <p className="role-badge">
-          Your role: <strong>{ui.myRole}</strong>
-        </p>
+      {ui.myRole && !revealDismissed ? (
+        <RoleReveal role={ui.myRole} onDone={() => setRevealDismissed(true)} />
       ) : null}
+      <GameScene variant="night">
+        <h1>🌑 Night</h1>
+        {ui.myRole ? (
+          <p className="role-badge" style={{ borderColor: roleColor(ui.myRole), color: roleColor(ui.myRole) }}>
+            Your role: <strong>{roleDisplayName(ui.myRole)}</strong>
+          </p>
+        ) : null}
 
-      {snapshot.nightStep ? (
-        <div className="turn-banner">
-          {formatRole(snapshot.nightStep.role)} phase — <Countdown endsAt={snapshot.nightStep.endsAt} />
-        </div>
-      ) : null}
+        {snapshot.nightStep ? (
+          <div className="turn-banner">
+            {roleDisplayName(snapshot.nightStep.role)} phase — <Countdown endsAt={snapshot.nightStep.endsAt} />
+          </div>
+        ) : null}
+      </GameScene>
 
       <Table
         players={snapshot.players}
         hostSocketId={snapshot.hostSocketId}
         mySocketId={socket.id ?? ""}
-        seatBadge={(p) => (ui.fellowWolves?.includes(p.socketId) ? <span title="Fellow Werewolf">🐺</span> : null)}
+        seatBadge={(p) => (ui.fellowWolves?.includes(p.socketId) ? <span title="Fellow Vampire">🩸</span> : null)}
         onSeatClick={handleSeatClick}
         selectableSeatIds={selectableSeatIds}
         selectedSeatIds={selectedSeatIds}
@@ -121,9 +126,9 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
 
       {ui.fellowWolves ? (
         <div className="panel">
-          <h2>Fellow Werewolves</h2>
+          <h2>Fellow Vampires</h2>
           {ui.fellowWolves.length === 0 ? (
-            <p>You are the only Werewolf among the players.</p>
+            <p>You are the only Vampire among the players.</p>
           ) : (
             <ul>
               {ui.fellowWolves.map((id) => (
@@ -134,12 +139,12 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </div>
       ) : null}
 
-      {wolfCenterMode ? <p className="hint">No other player is a Werewolf. Tap a center card to peek at it.</p> : null}
+      {wolfCenterMode ? <p className="hint">No other player is a Vampire. Tap a center card to peek at it.</p> : null}
       {ui.centerResult ? (
         <div className="panel">
           <h2>Center Card Revealed</h2>
           <p>
-            Center card {ui.centerResult.centerIndex - n + 1}: <strong>{ui.centerResult.role}</strong>
+            Center card {ui.centerResult.centerIndex - n + 1}: <strong>{roleDisplayName(ui.centerResult.role)}</strong>
           </p>
         </div>
       ) : null}
@@ -159,11 +164,11 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
           <h2>Vision</h2>
           {ui.seerResult.viewedPlayerSeat !== null ? (
             <p>
-              {snapshot.players[ui.seerResult.viewedPlayerSeat]?.name}'s card: <strong>{ui.seerResult.roles[0]}</strong>
+              {snapshot.players[ui.seerResult.viewedPlayerSeat]?.name}'s card: <strong>{roleDisplayName(ui.seerResult.roles[0])}</strong>
             </p>
           ) : (
             <p>
-              Center cards: <strong>{ui.seerResult.roles.join(", ")}</strong>
+              Center cards: <strong>{ui.seerResult.roles.map(roleDisplayName).join(", ")}</strong>
             </p>
           )}
         </div>
@@ -172,9 +177,9 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
       {robberMode ? <p className="hint">Tap another player's card to swap it with yours.</p> : null}
       {ui.robberResult ? (
         <div className="panel">
-          <h2>You Robbed a Card</h2>
+          <h2>You Stole a Card</h2>
           <p>
-            Your new role: <strong>{ui.robberResult.newRole}</strong>
+            Your new role: <strong>{roleDisplayName(ui.robberResult.newRole)}</strong>
           </p>
         </div>
       ) : null}
@@ -198,9 +203,9 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
 
       {ui.insomniacResult ? (
         <div className="panel">
-          <h2>Insomniac Check</h2>
+          <h2>Sentry Check</h2>
           <p>
-            Your current card is now: <strong>{ui.insomniacResult.currentRole}</strong>
+            Your current card is now: <strong>{roleDisplayName(ui.insomniacResult.currentRole)}</strong>
           </p>
         </div>
       ) : null}

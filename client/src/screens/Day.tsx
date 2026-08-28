@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RoomSnapshot } from "@nightfall/shared";
 import { Countdown } from "../components/Countdown";
+import { GameScene } from "../components/GameScene";
 import { Table } from "../components/Table";
 import { socket } from "../socket";
 
@@ -15,12 +16,14 @@ export function Day({ snapshot }: { snapshot: RoomSnapshot }) {
 
   return (
     <div className="screen day">
-      <h1>☀️ Day</h1>
-      {snapshot.dayEndsAt ? (
-        <p className="hint">
-          Discuss before voting begins: <Countdown endsAt={snapshot.dayEndsAt} />
-        </p>
-      ) : null}
+      <GameScene variant="day">
+        <h1>☀️ Day</h1>
+        {snapshot.dayEndsAt ? (
+          <p className="hint">
+            Discuss before voting begins: <Countdown endsAt={snapshot.dayEndsAt} />
+          </p>
+        ) : null}
+      </GameScene>
 
       <Table players={snapshot.players} hostSocketId={snapshot.hostSocketId} mySocketId={socket.id ?? ""} />
 

@@ -45,6 +45,7 @@ export interface ServerRoom {
   originalArray: Role[] | null;
   actionLog: ActionLogEntry[];
 
+  gameStartTimer: NodeJS.Timeout | null;
   nightStepIndex: number;
   currentNightStep: NightStepState | null;
 
@@ -99,6 +100,7 @@ export function createRoom(hostSocketId: string, hostName: string): ServerRoom {
     cardArray: null,
     originalArray: null,
     actionLog: [],
+    gameStartTimer: null,
     nightStepIndex: 0,
     currentNightStep: null,
     dayEndsAt: null,

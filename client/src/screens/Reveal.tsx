@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { RoomSnapshot } from "@nightfall/shared";
 import { socket } from "../socket";
+import { factionDisplayName, roleDisplayName } from "../roleTheme";
 
 export function Reveal({ snapshot }: { snapshot: RoomSnapshot }) {
   const [showLog, setShowLog] = useState(false);
@@ -16,7 +17,7 @@ export function Reveal({ snapshot }: { snapshot: RoomSnapshot }) {
       <p className={`banner ${iWon ? "win" : "lose"}`}>
         {result.winningFactions.length === 0
           ? "No faction wins this round."
-          : `Winning faction(s): ${result.winningFactions.join(", ")}`}
+          : `Winning faction(s): ${result.winningFactions.map(factionDisplayName).join(", ")}`}
         {" — "}
         {iWon ? "You won!" : "You lost."}
       </p>
@@ -41,8 +42,8 @@ export function Reveal({ snapshot }: { snapshot: RoomSnapshot }) {
           {result.players.map((p) => (
             <tr key={p.socketId} className={p.socketId === socket.id ? "me" : ""}>
               <td>{p.name}</td>
-              <td>{p.originalRole}</td>
-              <td>{p.finalRole}</td>
+              <td>{roleDisplayName(p.originalRole)}</td>
+              <td>{roleDisplayName(p.finalRole)}</td>
               <td>{p.eliminated ? "Yes" : "No"}</td>
               <td>{p.won ? "Won" : "Lost"}</td>
             </tr>

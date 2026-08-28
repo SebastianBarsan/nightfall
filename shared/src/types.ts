@@ -72,6 +72,9 @@ export interface RoomSnapshot {
 export const MIN_NAME_LENGTH = 1;
 export const MAX_NAME_LENGTH = 20;
 export const DEFAULT_DAY_DURATION_SEC = 30;
+/** Pause after dealing, before the first night step starts, so players have time to read their
+ * role reveal and dismiss it before any turn timer starts counting down. */
+export const ROLE_REVEAL_DELAY_MS = 5_000;
 export const NIGHT_STEP_DURATION_MS = 8_000;
 export const HUNTER_SUBPHASE_DURATION_MS = 10_000;
 export const VOTING_DURATION_MS = 15_000;

@@ -13,7 +13,9 @@ import {
   NIGHT_STEP_DURATION_MS,
   PlayerResult,
   Role,
+  roleDisplayName,
   RoleCounts,
+  ROLE_REVEAL_DELAY_MS,
   ServerToClientEvents,
   validateRoleCounts,
   VOTING_DURATION_MS,
@@ -77,7 +79,11 @@ export function startGame(io: IO, room: ServerRoom, requestorSocketId: string): 
   });
 
   broadcastState(io, room);
-  runNightStep(io, room);
+  // Give everyone a beat to read their role reveal before the first night step's timer starts.
+  room.gameStartTimer = setTimeout(() => {
+    room.gameStartTimer = null;
+    runNightStep(io, room);
+  }, ROLE_REVEAL_DELAY_MS);
 }
 
 export function configureRoles(io: IO, room: ServerRoom, requestorSocketId: string, roleCounts: RoleCounts): void {
@@ -149,7 +155,7 @@ function runNightStep(io: IO, room: ServerRoom): void {
       role,
       actorSocketId: null,
       actorName: null,
-      description: `${role} card is in the center; no player acted.`,
+      description: `${roleDisplayName(role)} card is in the center; no player acted.`,
     });
     room.currentNightStep.timer = setTimeout(() => advanceNightStep(io, room), NIGHT_STEP_DURATION_MS);
     return;
@@ -165,7 +171,7 @@ function runNightStep(io: IO, room: ServerRoom): void {
         role,
         actorSocketId: null,
         actorName: null,
-        description: `Werewolves recognized each other: ${activeSeats.map((s) => nameAt(room, s)).join(", ")}.`,
+        description: `Vampires recognized each other: ${activeSeats.map((s) => nameAt(room, s)).join(", ")}.`,
       });
       // Informational only — brief pause so clients can render it, then advance.
       room.currentNightStep.timer = setTimeout(() => advanceNightStep(io, room), NIGHT_STEP_DURATION_MS);
@@ -184,7 +190,7 @@ function runNightStep(io: IO, room: ServerRoom): void {
           role,
           actorSocketId: room.seats[wolfSeat].socketId,
           actorName: nameAt(room, wolfSeat),
-          description: "Lone wolf did not view a center card in time.",
+          description: "Lone vampire did not view a center card in time.",
         });
       }
       advanceNightStep(io, room);
@@ -201,7 +207,7 @@ function runNightStep(io: IO, room: ServerRoom): void {
           role,
           actorSocketId: room.seats[seat].socketId,
           actorName: nameAt(room, seat),
-          description: "Seer did not act in time.",
+          description: "Oracle did not act in time.",
         });
       }
       advanceNightStep(io, room);
@@ -218,7 +224,7 @@ function runNightStep(io: IO, room: ServerRoom): void {
           role,
           actorSocketId: room.seats[seat].socketId,
           actorName: nameAt(room, seat),
-          description: "Robber did not act in time.",
+          description: "Thief did not act in time.",
         });
       }
       advanceNightStep(io, room);
@@ -251,7 +257,7 @@ function runNightStep(io: IO, room: ServerRoom): void {
       role,
       actorSocketId: room.seats[seat].socketId,
       actorName: nameAt(room, seat),
-      description: `Insomniac checked their card and is now ${currentRole}.`,
+      description: `Sentry checked their card and is now ${roleDisplayName(currentRole)}.`,
     });
     room.currentNightStep.acted = new Set([seat]);
     room.currentNightStep.timer = setTimeout(() => advanceNightStep(io, room), NIGHT_STEP_DURATION_MS);
@@ -298,7 +304,7 @@ export function handleWerewolfViewCenter(io: IO, room: ServerRoom, socketId: str
     role: Role.WEREWOLF,
     actorSocketId: socketId,
     actorName: nameAt(room, seat),
-    description: `Lone wolf ${nameAt(room, seat)} viewed center card ${centerIndex}: ${viewedRole}.`,
+    description: `Lone vampire ${nameAt(room, seat)} viewed center card ${centerIndex}: ${roleDisplayName(viewedRole)}.`,
   });
   // Deliberately no advanceNightStep() here — the step's own timer (started in runNightStep)
   // is the only thing that ends it, so acting early never shortens the turn.
@@ -318,18 +324,18 @@ export function handleSeerTarget(
   let description: string;
   if (playerSeat !== null) {
     if (playerSeat < 0 || playerSeat >= room.seats.length || playerSeat === seat) {
-      io.to(socketId).emit("room:error", { message: "Invalid Seer target." });
+      io.to(socketId).emit("room:error", { message: "Invalid Oracle target." });
       return;
     }
     roles = [room.cardArray![playerSeat]];
-    description = `Seer ${nameAt(room, seat)} viewed ${nameAt(room, playerSeat)}'s card: ${roles[0]}.`;
+    description = `Oracle ${nameAt(room, seat)} viewed ${nameAt(room, playerSeat)}'s card: ${roleDisplayName(roles[0])}.`;
   } else if (centerIdxs && centerIdxs.length === 2) {
     if (centerIdxs.some((i) => !isCenterIndex(room, i)) || centerIdxs[0] === centerIdxs[1]) {
       io.to(socketId).emit("room:error", { message: "Invalid center card selection." });
       return;
     }
     roles = centerIdxs.map((i) => room.cardArray![i]);
-    description = `Seer ${nameAt(room, seat)} viewed center cards ${centerIdxs.join(", ")}: ${roles.join(", ")}.`;
+    description = `Oracle ${nameAt(room, seat)} viewed center cards ${centerIdxs.join(", ")}: ${roles.map(roleDisplayName).join(", ")}.`;
   } else {
     io.to(socketId).emit("room:error", { message: "Choose one player or two center cards." });
     return;
@@ -349,7 +355,7 @@ export function handleRobberTarget(io: IO, room: ServerRoom, socketId: string, p
   const seat = currentActiveSeat(room, Role.ROBBER, socketId);
   if (seat === null) return;
   if (playerSeat < 0 || playerSeat >= room.seats.length || playerSeat === seat) {
-    io.to(socketId).emit("room:error", { message: "Invalid Robber target." });
+    io.to(socketId).emit("room:error", { message: "Invalid Thief target." });
     return;
   }
   room.currentNightStep!.acted.add(seat);
@@ -360,7 +366,7 @@ export function handleRobberTarget(io: IO, room: ServerRoom, socketId: string, p
     role: Role.ROBBER,
     actorSocketId: socketId,
     actorName: nameAt(room, seat),
-    description: `Robber ${nameAt(room, seat)} swapped cards with ${nameAt(room, playerSeat)} and is now ${arr[seat]}.`,
+    description: `Thief ${nameAt(room, seat)} swapped cards with ${nameAt(room, playerSeat)} and is now ${roleDisplayName(arr[seat])}.`,
   });
   // No advanceNightStep() — see handleWerewolfViewCenter for why.
 }
@@ -592,7 +598,7 @@ function computeMvp(
     const target = players.find((p) => p.socketId === targetId);
     const voter = players.find((p) => p.socketId === voterId);
     if (target?.eliminated && target.finalRole === Role.WEREWOLF && voter) {
-      return { socketId: voter.socketId, name: voter.name, reason: "Correctly voted out a Werewolf." };
+      return { socketId: voter.socketId, name: voter.name, reason: "Correctly voted out a Vampire." };
     }
   }
   return null;
@@ -624,6 +630,7 @@ export function resetForPlayAgain(io: IO, room: ServerRoom, requestorSocketId: s
 
 export function cleanupEmptyRoom(room: ServerRoom): void {
   if (room.seats.every((s) => !s.connected)) {
+    if (room.gameStartTimer) clearTimeout(room.gameStartTimer);
     if (room.dayTimer) clearTimeout(room.dayTimer);
     if (room.votingTimer) clearTimeout(room.votingTimer);
     if (room.currentNightStep?.timer) clearTimeout(room.currentNightStep.timer);
