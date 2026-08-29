@@ -11,11 +11,17 @@
       <stop offset="100%" stop-color="#b9b3e0"/>
     </radialGradient>
     <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="4"/>
+      <feGaussianBlur stdDeviation="3"/>
     </filter>
   </defs>
 
   <rect width="64" height="64" rx="14" fill="url(#bg)"/>
-  <circle cx="32" cy="32" r="15" fill="#c9c2ff" opacity="0.35" filter="url(#glow)"/>
-  <circle cx="32" cy="32" r="13" fill="url(#moon)"/>
+  <circle cx="32" cy="32" r="19" fill="#c9c2ff" opacity="0.4" filter="url(#glow)"/>
+  <circle cx="32" cy="32" r="17" fill="url(#moon)"/>
+  <g fill="#a89fd0" opacity="0.45">
+    <circle cx="26" cy="24" r="3.4"/>
+    <circle cx="39" cy="28" r="2.3"/>
+    <circle cx="28" cy="39" r="2.7"/>
+    <circle cx="37" cy="38" r="1.6"/>
+  </g>
 </svg>
