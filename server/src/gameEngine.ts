@@ -499,7 +499,7 @@ function resolveVoting(io: IO, room: ServerRoom): void {
     return;
   }
 
-  finalizeReveal(io, room, eliminatedSeats);
+  finalizeReveal(io, room, eliminatedSeats, null);
 }
 
 export function handleHunterTarget(io: IO, room: ServerRoom, socketId: string, targetSocketId: string): void {
@@ -532,7 +532,6 @@ function getLastVoteEliminatedSeats(room: ServerRoom): number[] {
 
 function resolveHunter(io: IO, room: ServerRoom, baseEliminatedSeats: number[], extraSeat: number | null): void {
   room.hunterSubPhase = null;
-  const eliminatedSeats = extraSeat !== null ? [...new Set([...baseEliminatedSeats, extraSeat])] : baseEliminatedSeats;
   if (extraSeat !== null) {
     log(room, {
       role: Role.HUNTER,
@@ -541,14 +540,19 @@ function resolveHunter(io: IO, room: ServerRoom, baseEliminatedSeats: number[], 
       description: `Hunter took ${nameAt(room, extraSeat)} down with them.`,
     });
   }
-  finalizeReveal(io, room, eliminatedSeats);
+  finalizeReveal(io, room, baseEliminatedSeats, extraSeat);
 }
 
 // ---------------------------------------------------------------------------
 // Reveal & victory evaluation
 // ---------------------------------------------------------------------------
 
-function finalizeReveal(io: IO, room: ServerRoom, eliminatedSeats: number[]): void {
+function finalizeReveal(
+  io: IO,
+  room: ServerRoom,
+  voteEliminatedSeats: number[],
+  hunterShotSeat: number | null,
+): void {
   if (room.dayTimer) clearTimeout(room.dayTimer);
   if (room.votingTimer) clearTimeout(room.votingTimer);
   room.dayTimer = null;
@@ -562,21 +566,48 @@ function finalizeReveal(io: IO, room: ServerRoom, eliminatedSeats: number[]): vo
   const wolfSeatsInPlay: number[] = [];
   for (let i = 0; i < n; i++) if (finalArray[i] === Role.WEREWOLF) wolfSeatsInPlay.push(i);
 
-  const aWolfWasEliminated = eliminatedSeats.some((s) => finalArray[s] === Role.WEREWOLF);
-  const tannerEliminated = eliminatedSeats.some((s) => finalArray[s] === Role.TANNER);
+  const eliminatedSeats =
+    hunterShotSeat !== null ? [...new Set([...voteEliminatedSeats, hunterShotSeat])] : voteEliminatedSeats;
 
-  const villageWins = wolfSeatsInPlay.length > 0 ? aWolfWasEliminated : eliminatedSeats.length === 0;
-  const werewolfWins = wolfSeatsInPlay.length > 0 ? !aWolfWasEliminated : false;
+  // The Jester only wins by being the player the village directly voted out — getting caught
+  // by the Hunter's follow-up shot doesn't count (see the HUNTER branch below), and nothing
+  // else does either. A Jester win is exclusive of Village/Werewolf: nobody else wins with them.
+  const votedSeat = voteEliminatedSeats[0] ?? null;
+  const votedRole = votedSeat !== null ? finalArray[votedSeat] : null;
+  const tannerWins = votedRole === Role.TANNER;
+
+  let villageWins: boolean;
+  let werewolfWins: boolean;
+
+  if (tannerWins) {
+    villageWins = false;
+    werewolfWins = false;
+  } else if (wolfSeatsInPlay.length === 0) {
+    // No Vampire card is even in play among the seated players — nothing for the village to
+    // catch. The village wins only if nobody died chasing a threat that wasn't there.
+    villageWins = eliminatedSeats.length === 0;
+    werewolfWins = false;
+  } else if (votedRole === Role.HUNTER) {
+    // The village voted out the Hunter, who gets one follow-up shot. Catching a Vampire wins
+    // it for the village; catching the Jester is a non-event that still favors the village (the
+    // Jester does not win this way, per tannerWins above); anything else lets the Vampires win.
+    const shotRole = hunterShotSeat !== null ? finalArray[hunterShotSeat] : null;
+    villageWins = shotRole === Role.WEREWOLF || shotRole === Role.TANNER;
+    werewolfWins = !villageWins;
+  } else {
+    villageWins = votedRole === Role.WEREWOLF;
+    werewolfWins = !villageWins;
+  }
 
   const winningFactions: GameResult["winningFactions"] = [];
   if (villageWins) winningFactions.push("VILLAGE");
   if (werewolfWins) winningFactions.push("WEREWOLF");
-  if (tannerEliminated) winningFactions.push("TANNER");
+  if (tannerWins) winningFactions.push("TANNER");
 
   const players: PlayerResult[] = room.seats.map((seat, i) => {
     const finalRole = finalArray[i];
     const eliminated = eliminatedSeats.includes(i);
-    const won = finalRole === Role.TANNER ? eliminated : finalRole === Role.WEREWOLF ? werewolfWins : villageWins;
+    const won = finalRole === Role.TANNER ? tannerWins : finalRole === Role.WEREWOLF ? werewolfWins : villageWins;
     return {
       socketId: seat.socketId,
       name: seat.name,
@@ -587,7 +618,7 @@ function finalizeReveal(io: IO, room: ServerRoom, eliminatedSeats: number[]): vo
     };
   });
 
-  const mvp = computeMvp(room, players, tannerEliminated);
+  const mvp = computeMvp(room, players, tannerWins);
 
   room.result = {
     initialArray: originalArray,
@@ -605,9 +636,9 @@ function finalizeReveal(io: IO, room: ServerRoom, eliminatedSeats: number[]): vo
 function computeMvp(
   room: ServerRoom,
   players: PlayerResult[],
-  tannerEliminated: boolean,
+  tannerWins: boolean,
 ): GameResult["mvp"] {
-  if (tannerEliminated) {
+  if (tannerWins) {
     const tanner = players.find((p) => p.finalRole === Role.TANNER && p.eliminated);
     if (tanner) return { socketId: tanner.socketId, name: tanner.name, reason: "Successfully engineered their own elimination." };
   }
