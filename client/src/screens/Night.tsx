@@ -21,6 +21,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
   const seerMode = ui.seerPromptActive && currentStepRole === Role.SEER;
   const robberMode = ui.robberPromptActive && currentStepRole === Role.ROBBER;
   const troublemakerMode = ui.troublemakerPromptActive && currentStepRole === Role.TROUBLEMAKER;
+  const insomniacMode = ui.insomniacPromptActive && currentStepRole === Role.INSOMNIAC;
 
   const [selectedCenters, setSelectedCenters] = useState<number[]>([]);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
@@ -38,6 +39,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
       if (p.socketId !== socket.id) selectableSeatIds.add(p.socketId);
     });
   }
+  if (insomniacMode && socket.id) selectableSeatIds.add(socket.id);
   const selectedSeatIds = new Set(
     selectedSeats.map((seat) => snapshot.players[seat]?.socketId).filter((id): id is string => Boolean(id)),
   );
@@ -48,6 +50,10 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
   const selectedCentersSet = new Set(selectedCenters);
 
   const handleSeatClick = (p: PublicPlayer) => {
+    if (insomniacMode && p.socketId === socket.id) {
+      socket.emit("night:insomniac:reveal");
+      return;
+    }
     if (seerMode) {
       socket.emit("night:seer:target", { playerSeat: p.seatIndex, centerIndices: null });
       return;
@@ -89,7 +95,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
     socket.emit("night:troublemaker:swap", { seatA: selectedSeats[0], seatB: selectedSeats[1] });
   };
 
-  const isMyTurn = wolfCenterMode || seerMode || robberMode || troublemakerMode;
+  const isMyTurn = wolfCenterMode || seerMode || robberMode || troublemakerMode || insomniacMode;
 
   return (
     <div className="screen night">
@@ -97,7 +103,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         <RoleReveal role={ui.myRole} onDone={() => setRevealDismissed(true)} />
       ) : null}
       <GameScene variant="night">
-        <h1>🌑 Night</h1>
+        <h1>Night</h1>
         {ui.myRole ? (
           <p className="role-badge" style={{ borderColor: roleColor(ui.myRole), color: roleColor(ui.myRole) }}>
             Your role: <strong>{roleDisplayName(ui.myRole)}</strong>
@@ -115,7 +121,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         players={snapshot.players}
         hostSocketId={snapshot.hostSocketId}
         mySocketId={socket.id ?? ""}
-        seatBadge={(p) => (ui.fellowWolves?.includes(p.socketId) ? <span title="Fellow Vampire">🩸</span> : null)}
+        seatBadge={(p) => (ui.fellowWolves?.includes(p.socketId) ? <span className="fellow-mark" title="Fellow Vampire" /> : null)}
         onSeatClick={handleSeatClick}
         selectableSeatIds={selectableSeatIds}
         selectedSeatIds={selectedSeatIds}
@@ -201,6 +207,7 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
         </div>
       ) : null}
 
+      {insomniacMode ? <p className="hint">Tap your own card to check it.</p> : null}
       {ui.insomniacResult ? (
         <div className="panel">
           <h2>Sentry Check</h2>

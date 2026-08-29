@@ -13,7 +13,7 @@ export function Reveal({ snapshot }: { snapshot: RoomSnapshot }) {
 
   return (
     <div className="screen reveal">
-      <h1>🏆 Reveal</h1>
+      <h1>Reveal</h1>
       <p className={`banner ${iWon ? "win" : "lose"}`}>
         {result.winningFactions.length === 0
           ? "No faction wins this round."

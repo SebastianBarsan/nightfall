@@ -304,6 +304,15 @@ h1 {
   line-height: 1;
 }
 
+.fellow-mark {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff6b6b 0%, #a3161f 70%, #5c0a10 100%);
+  box-shadow: 0 0 5px 1px rgba(200, 30, 40, 0.6);
+}
+
 .seat-card {
   display: block;
   width: clamp(28px, 7vw, 52px);
@@ -379,14 +388,18 @@ h1 {
   margin-top: 3rem;
 }
 .coin {
-  font-size: 3rem;
-  background: none;
-  border: none;
-  padding: 0.5rem;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe6a3 0%, #e8b23d 45%, #9c6f1e 85%);
+  border: 2px solid #7a5518;
+  box-shadow:
+    inset 0 0 6px rgba(0, 0, 0, 0.35),
+    0 0 10px rgba(232, 178, 61, 0.35);
+  padding: 0;
 }
 .coin:hover {
   transform: scale(1.08);
-  background: none;
 }
 
 .chat {
@@ -657,43 +670,32 @@ h1 {
   }
 }
 
-/* Night/Day scene banner: full-bleed, same treatment as .screen.home but as a shorter hero
-   band above the gameplay content rather than the whole page. */
-.game-scene {
-  position: relative;
+/* Night/Day scene backdrop: fixed to the viewport so it fills the whole screen — including
+   behind the table below — instead of sitting in a banner strip above the gameplay content.
+   Sits at z-index -1, below every normal-flow element on the page (see .app). The sky itself
+   stays full-strength (it's already a muted color); subtlety comes from dimming the individual
+   art layer (.skyline-svg / .farm-svg below) so the scenery reads as ambience behind the table
+   rather than competing with it. */
+.game-scene-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   overflow: hidden;
-  width: 100vw;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
-  margin-top: -2rem;
-  margin-bottom: 1.5rem;
-  min-height: 260px;
-  padding: 2.5rem 1.5rem 3.5rem;
-  display: flex;
-  align-items: flex-end;
+  pointer-events: none;
 }
 
-.game-scene--night {
+.game-scene-bg--night {
   background: radial-gradient(ellipse at 70% 15%, #2a2f57 0%, #171a33 45%, #0b0c1a 85%);
-  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.5);
 }
 
-.game-scene--day {
+.game-scene-bg--day {
   background: radial-gradient(ellipse at 30% 12%, #d7edff 0%, #9bc9ec 50%, #5f9fd9 100%);
-  box-shadow: inset 0 0 80px rgba(20, 50, 80, 0.15);
 }
 
-.game-scene-content {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-}
 .game-scene-content h1 {
   margin: 0 0 0.6rem;
 }
-.game-scene--day .game-scene-content {
+.game-scene-bg--day ~ .game-scene-content {
   color: #16192b;
 }
 
@@ -758,16 +760,29 @@ h1 {
   right: 0;
   bottom: 0;
   width: 100%;
-  height: 120px;
+  /* Matches the 800x140 viewBox's aspect ratio exactly, so "slice" scaling never has to crop
+     the top of the artwork regardless of viewport width — see .farm-svg for the same fix. */
+  height: 17.5vw;
   fill: currentColor;
 }
-.game-scene--night .skyline-svg {
+.game-scene-bg--night .skyline-svg {
   color: #12142a;
   opacity: 0.95;
 }
-.game-scene--day .skyline-svg {
-  color: #5a4636;
-  opacity: 0.85;
+
+.farm-svg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  /* A fixed px height cropped the top of the scene (barn roof, silo cap, tree line) on wide
+     viewports, because preserveAspectRatio="slice" scales to cover the container and then
+     crops whatever doesn't fit — cropping from the top since the art is bottom-anchored.
+     800x260 viewBox's own aspect ratio (260/800 = 0.325) as a vw unit means the container's
+     height always matches what "slice" needs, so nothing gets cropped at any viewport width. */
+  height: 32.5vw;
+  opacity: 0.65;
 }
 
 .role-reveal-tap {

@@ -251,16 +251,18 @@ function runNightStep(io: IO, room: ServerRoom): void {
 
   if (role === Role.INSOMNIAC) {
     const seat = activeSeats[0];
-    const currentRole = room.cardArray![seat];
-    io.to(room.seats[seat].socketId).emit("insomniac:result", { currentRole });
-    log(room, {
-      role,
-      actorSocketId: room.seats[seat].socketId,
-      actorName: nameAt(room, seat),
-      description: `Sentry checked their card and is now ${roleDisplayName(currentRole)}.`,
-    });
-    room.currentNightStep.acted = new Set([seat]);
-    room.currentNightStep.timer = setTimeout(() => advanceNightStep(io, room), NIGHT_STEP_DURATION_MS);
+    io.to(room.seats[seat].socketId).emit("insomniac:prompt");
+    room.currentNightStep.timer = setTimeout(() => {
+      if (!room.currentNightStep?.acted.has(seat)) {
+        log(room, {
+          role,
+          actorSocketId: room.seats[seat].socketId,
+          actorName: nameAt(room, seat),
+          description: "Sentry did not check their card in time.",
+        });
+      }
+      advanceNightStep(io, room);
+    }, NIGHT_STEP_DURATION_MS);
     return;
   }
 }
@@ -367,6 +369,21 @@ export function handleRobberTarget(io: IO, room: ServerRoom, socketId: string, p
     actorSocketId: socketId,
     actorName: nameAt(room, seat),
     description: `Thief ${nameAt(room, seat)} swapped cards with ${nameAt(room, playerSeat)} and is now ${roleDisplayName(arr[seat])}.`,
+  });
+  // No advanceNightStep() — see handleWerewolfViewCenter for why.
+}
+
+export function handleInsomniacReveal(io: IO, room: ServerRoom, socketId: string): void {
+  const seat = currentActiveSeat(room, Role.INSOMNIAC, socketId);
+  if (seat === null) return;
+  room.currentNightStep!.acted.add(seat);
+  const currentRole = room.cardArray![seat];
+  io.to(socketId).emit("insomniac:result", { currentRole });
+  log(room, {
+    role: Role.INSOMNIAC,
+    actorSocketId: socketId,
+    actorName: nameAt(room, seat),
+    description: `Sentry ${nameAt(room, seat)} checked their card and is now ${roleDisplayName(currentRole)}.`,
   });
   // No advanceNightStep() — see handleWerewolfViewCenter for why.
 }

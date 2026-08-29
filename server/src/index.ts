@@ -23,6 +23,7 @@ import {
   configureRoles,
   handleChat,
   handleHunterTarget,
+  handleInsomniacReveal,
   handleRobberTarget,
   handleSeerTarget,
   handleTroublemakerSwap,
@@ -111,6 +112,11 @@ io.on("connection", (socket) => {
   socket.on("night:troublemaker:swap", ({ seatA, seatB }) => {
     const room = findRoomBySocket(socket.id);
     if (room) handleTroublemakerSwap(io, room, socket.id, seatA, seatB);
+  });
+
+  socket.on("night:insomniac:reveal", () => {
+    const room = findRoomBySocket(socket.id);
+    if (room) handleInsomniacReveal(io, room, socket.id);
   });
 
   socket.on("coin:tap", () => {

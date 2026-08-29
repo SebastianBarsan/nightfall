@@ -23,6 +23,7 @@ export interface GameUiState {
   robberResult: { newRole: Role } | null;
   troublemakerPromptActive: boolean;
   troublemakerAcked: boolean;
+  insomniacPromptActive: boolean;
   insomniacResult: { currentRole: Role } | null;
   coinSpawns: number;
   chatFlash: boolean;
@@ -42,6 +43,7 @@ const initialState: GameUiState = {
   robberResult: null,
   troublemakerPromptActive: false,
   troublemakerAcked: false,
+  insomniacPromptActive: false,
   insomniacResult: null,
   coinSpawns: 0,
   chatFlash: false,
@@ -76,6 +78,7 @@ export function useGame() {
             robberResult: snapshot.phase === "NIGHT" ? s.robberResult : null,
             troublemakerPromptActive: false,
             troublemakerAcked: false,
+            insomniacPromptActive: false,
             insomniacResult: snapshot.phase === "NIGHT" ? s.insomniacResult : null,
           };
         }
@@ -94,6 +97,7 @@ export function useGame() {
             seerPromptActive: false,
             robberPromptActive: false,
             troublemakerPromptActive: false,
+            insomniacPromptActive: false,
           };
         }
         return { ...s, snapshot };
@@ -113,6 +117,7 @@ export function useGame() {
         robberResult: null,
         troublemakerPromptActive: false,
         troublemakerAcked: false,
+        insomniacPromptActive: false,
         insomniacResult: null,
       }));
 
@@ -131,7 +136,9 @@ export function useGame() {
     const onTroublemakerPrompt = () => setState((s) => ({ ...s, troublemakerPromptActive: true }));
     const onTroublemakerAck = () =>
       setState((s) => ({ ...s, troublemakerAcked: true, troublemakerPromptActive: false }));
-    const onInsomniacResult = (p: { currentRole: Role }) => setState((s) => ({ ...s, insomniacResult: p }));
+    const onInsomniacPrompt = () => setState((s) => ({ ...s, insomniacPromptActive: true }));
+    const onInsomniacResult = (p: { currentRole: Role }) =>
+      setState((s) => ({ ...s, insomniacResult: p, insomniacPromptActive: false }));
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -148,6 +155,7 @@ export function useGame() {
     socket.on("robber:result", onRobberResult);
     socket.on("troublemaker:prompt", onTroublemakerPrompt);
     socket.on("troublemaker:ack", onTroublemakerAck);
+    socket.on("insomniac:prompt", onInsomniacPrompt);
     socket.on("insomniac:result", onInsomniacResult);
 
     return () => {
@@ -166,6 +174,7 @@ export function useGame() {
       socket.off("robber:result", onRobberResult);
       socket.off("troublemaker:prompt", onTroublemakerPrompt);
       socket.off("troublemaker:ack", onTroublemakerAck);
+      socket.off("insomniac:prompt", onInsomniacPrompt);
       socket.off("insomniac:result", onInsomniacResult);
     };
   }, []);

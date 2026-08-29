@@ -14,7 +14,7 @@ export function Voting({ snapshot }: { snapshot: RoomSnapshot }) {
       : undefined;
     return (
       <div className="screen voting">
-        <h1>🏹 The Hunter's Last Shot</h1>
+        <h1>The Hunter's Last Shot</h1>
         <p className="hint">
           <Countdown endsAt={snapshot.hunterSubPhase.endsAt} />
         </p>
@@ -36,7 +36,7 @@ export function Voting({ snapshot }: { snapshot: RoomSnapshot }) {
 
   return (
     <div className="screen voting">
-      <h1>🗳️ Voting</h1>
+      <h1>Voting</h1>
       {snapshot.votingEndsAt ? (
         <p className="hint">
           Time remaining: <Countdown endsAt={snapshot.votingEndsAt} />

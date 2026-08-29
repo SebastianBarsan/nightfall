@@ -17,9 +17,7 @@ export function CoinTap({ spawns }: { spawns: number }) {
 
   return (
     <div className="coin-tap">
-      <button className="coin" onClick={onTap} aria-label="Tap the coin">
-        🪙
-      </button>
+      <button className="coin" onClick={onTap} aria-label="Tap the coin" />
       <p className="coin-hint">
         The village sleeps... (taps: {taps}, pings: {spawns})
       </p>

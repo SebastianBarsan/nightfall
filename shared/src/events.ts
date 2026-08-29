@@ -13,6 +13,7 @@ export interface ClientToServerEvents {
   "night:seer:target": (payload: { playerSeat: number | null; centerIndices: number[] | null }) => void;
   "night:robber:target": (payload: { playerSeat: number }) => void;
   "night:troublemaker:swap": (payload: { seatA: number; seatB: number }) => void;
+  "night:insomniac:reveal": () => void;
 
   "coin:tap": () => void;
 
@@ -43,6 +44,7 @@ export interface ServerToClientEvents {
   "troublemaker:prompt": () => void;
   "troublemaker:ack": () => void;
 
+  "insomniac:prompt": () => void;
   "insomniac:result": (payload: { currentRole: Role }) => void;
 
   "day:start": (payload: { endsAt: number }) => void;

@@ -17,7 +17,7 @@ export function Day({ snapshot }: { snapshot: RoomSnapshot }) {
   return (
     <div className="screen day">
       <GameScene variant="day">
-        <h1>☀️ Day</h1>
+        <h1>Day</h1>
         {snapshot.dayEndsAt ? (
           <p className="hint">
             Discuss before voting begins: <Countdown endsAt={snapshot.dayEndsAt} />
