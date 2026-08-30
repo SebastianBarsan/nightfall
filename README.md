@@ -49,11 +49,11 @@ This was built as a **prototype-first** pass, per explicit choice at kickoff:
   `N + 3` cards before a game can start.
 - **Room codes are `WORD-DDDD`** (e.g. `WOLF-4821`), matching the example in
   the spec literally, even though the spec's prose says "4-character."
-- **Turn-timing obfuscation is simplified.** The server does emit
-  `SPAWN_COIN`-equivalent (`coin:spawn`) events to inactive sockets during an
-  active night step, and clients can tap a coin to send real `coin:tap`
-  traffic back — but it's a single ping per step rather than a continuously
-  randomized traffic pattern.
+- **No turn-timing obfuscation.** The spec's `SPAWN_COIN`/`TAP_COIN` dummy-
+  traffic pattern (decoy socket pings to mask which client is acting) was
+  scrapped entirely; every `NIGHT_ORDER` step already always runs for the
+  same fixed duration regardless of who holds the role, which is the
+  information leak that pattern would otherwise have been guarding against.
 - **Win-condition edge case:** if zero Werewolves are dealt to any player (both
   in the center) and someone is still eliminated, the spec only defines the
   Village-loses side of that case, not an explicit Werewolf-wins rule for it.

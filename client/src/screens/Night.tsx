@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Role, type PublicPlayer, type RoomSnapshot } from "@nightfall/shared";
-import { CoinTap } from "../components/CoinTap";
 import { Countdown } from "../components/Countdown";
 import { GameScene } from "../components/GameScene";
 import { RoleReveal } from "../components/RoleReveal";
@@ -94,8 +93,6 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
     if (selectedSeats.length !== 2) return;
     socket.emit("night:troublemaker:swap", { seatA: selectedSeats[0], seatB: selectedSeats[1] });
   };
-
-  const isMyTurn = wolfCenterMode || seerMode || robberMode || troublemakerMode || insomniacMode;
 
   return (
     <div className="screen night">
@@ -216,8 +213,6 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
           </p>
         </div>
       ) : null}
-
-      {!ui.fellowWolves && !isMyTurn ? <CoinTap spawns={ui.coinSpawns} /> : null}
 
       <p className="hint">Mine: seat {mySeat}</p>
     </div>

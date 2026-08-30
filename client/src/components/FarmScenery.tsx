@@ -1,4 +1,4 @@
-/** Day-phase backdrop: a farmyard silhouette (fields, fence, barn, silo, haybales, scarecrow)
+/** Day-phase backdrop: a farmyard silhouette (fields, fence, barn, haybales, scarecrow)
  * shown behind the table via GameScene. Unlike VillageSkyline (shared, recolored via
  * `currentColor`), this is day-only and fully self-colored, so no phase-swap layer is needed. */
 export function FarmScenery() {
@@ -20,11 +20,6 @@ export function FarmScenery() {
         <linearGradient id="farmBarn" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#c4503f" />
           <stop offset="100%" stopColor="#832a1f" />
-        </linearGradient>
-        <linearGradient id="farmSilo" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#d4d8df" />
-          <stop offset="45%" stopColor="#b7bcc6" />
-          <stop offset="100%" stopColor="#8d939f" />
         </linearGradient>
         <linearGradient id="farmHay" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#edc766" />
@@ -87,14 +82,6 @@ export function FarmScenery() {
         <rect x="580" y="70" width="20" height="18" fill="#2a1c14" />
         <line x1="590" y1="48" x2="590" y2="34" stroke="#2e2018" strokeWidth={2} />
         <path d="M590,34 l10,4 -10,4 z" fill="#2e2018" />
-      </g>
-
-      {/* silo with ribbing + conical cap */}
-      <g>
-        <rect x="668" y="118" width="38" height="78" rx="19" fill="url(#farmSilo)" />
-        <ellipse cx="687" cy="118" rx="19" ry="10" fill="#e4e7ec" />
-        <path d="M672,102 L687,78 L702,102 Z" fill="#8d939f" />
-        <path d="M668,140 h38 M668,154 h38 M668,168 h38 M668,182 h38" stroke="#8b909c" strokeWidth={1.5} />
       </g>
 
       {/* two haybale stacks, shading + binding lines + cast shadows */}

@@ -121,15 +121,6 @@ function originalSeatsWithRole(room: ServerRoom, role: Role): number[] {
   return seats;
 }
 
-function pingInactiveSockets(io: IO, room: ServerRoom, activeSeats: number[]): void {
-  const activeIds = new Set(activeSeats.map((s) => room.seats[s].socketId));
-  for (const seat of room.seats) {
-    if (!activeIds.has(seat.socketId) && seat.connected) {
-      io.to(seat.socketId).emit("coin:spawn");
-    }
-  }
-}
-
 /**
  * Every role in NIGHT_ORDER gets called and gets the same on-screen duration, whether or not any
  * player actually holds that card (it may be in the center instead). Otherwise, which steps get
@@ -148,7 +139,6 @@ function runNightStep(io: IO, room: ServerRoom): void {
   const endsAt = Date.now() + NIGHT_STEP_DURATION_MS;
   room.currentNightStep = { role, activeSeats, timer: null, acted: new Set(), endsAt };
   broadcastState(io, room);
-  pingInactiveSockets(io, room, activeSeats);
 
   if (activeSeats.length === 0) {
     log(room, {

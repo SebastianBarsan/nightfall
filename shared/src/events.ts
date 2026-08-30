@@ -15,8 +15,6 @@ export interface ClientToServerEvents {
   "night:troublemaker:swap": (payload: { seatA: number; seatB: number }) => void;
   "night:insomniac:reveal": () => void;
 
-  "coin:tap": () => void;
-
   "day:chat": (payload: { text: string }) => void;
 
   "vote:cast": (payload: { targetSocketId: string }) => void;
@@ -29,7 +27,6 @@ export interface ServerToClientEvents {
   "room:error": (payload: { message: string }) => void;
 
   "night:yourRole": (payload: { role: Role }) => void;
-  "coin:spawn": () => void;
 
   "werewolf:teamReveal": (payload: { fellowWolfSocketIds: string[] }) => void;
   "werewolf:centerPrompt": (payload: { availableCenterIndices: number[] }) => void;

@@ -119,10 +119,6 @@ io.on("connection", (socket) => {
     if (room) handleInsomniacReveal(io, room, socket.id);
   });
 
-  socket.on("coin:tap", () => {
-    // Purely cosmetic ack for the dummy-traffic obfuscation pattern; no game effect.
-  });
-
   socket.on("day:chat", ({ text }) => {
     const room = findRoomBySocket(socket.id);
     if (room) handleChat(io, room, socket.id, text);
