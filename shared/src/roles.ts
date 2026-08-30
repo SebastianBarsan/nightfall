@@ -47,8 +47,8 @@ export function totalCardSlots(playerCount: number): number {
   return playerCount + CENTER_CARD_COUNT;
 }
 
-export function minWerewolfCount(playerCount: number): number {
-  return playerCount >= 5 ? 2 : 1;
+export function minWerewolfCount(_playerCount: number): number {
+  return 2;
 }
 
 export function maxWerewolfCount(playerCount: number): number {

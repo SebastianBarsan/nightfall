@@ -4,11 +4,17 @@ import { Server } from "socket.io";
 import {
   ClientToServerEvents,
   GamePhase,
-  MAX_NAME_LENGTH,
   MAX_PLAYERS,
-  MIN_NAME_LENGTH,
   ServerToClientEvents,
 } from "@nightfall/shared";
+import {
+  createSession,
+  destroySession,
+  loginUser,
+  registerUser,
+  resumeSession,
+  statsForUser,
+} from "./auth.js";
 import {
   createRoom,
   findRoomBySocket,
@@ -43,34 +49,66 @@ app.get("/health", async () => ({ ok: true }));
 
 await app.listen({ port: PORT, host: "0.0.0.0" });
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(app.server, {
+interface SocketData {
+  userId: number | null;
+  username: string | null;
+}
+
+const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>(app.server, {
   cors: { origin: CLIENT_ORIGIN },
 });
 
-function validName(name: string): string | null {
-  const trimmed = name.trim().slice(0, MAX_NAME_LENGTH);
-  if (trimmed.length < MIN_NAME_LENGTH) return null;
-  return trimmed;
-}
-
 io.on("connection", (socket) => {
-  socket.on("room:create", ({ name }, cb) => {
-    const cleanName = validName(name);
-    if (!cleanName) return cb({ ok: false, error: "Enter a valid name." });
-    const room = createRoom(socket.id, cleanName);
+  socket.data.userId = null;
+  socket.data.username = null;
+
+  socket.on("auth:register", ({ username, password }, cb) => {
+    const res = registerUser(username, password);
+    if (!res.ok) return cb(res);
+    const token = createSession(res.user);
+    socket.data.userId = res.user.id;
+    socket.data.username = res.user.username;
+    cb({ ok: true, token, username: res.user.username, stats: statsForUser(res.user.id)! });
+  });
+
+  socket.on("auth:login", ({ username, password }, cb) => {
+    const res = loginUser(username, password);
+    if (!res.ok) return cb(res);
+    const token = createSession(res.user);
+    socket.data.userId = res.user.id;
+    socket.data.username = res.user.username;
+    cb({ ok: true, token, username: res.user.username, stats: statsForUser(res.user.id)! });
+  });
+
+  socket.on("auth:resume", ({ token }, cb) => {
+    const user = resumeSession(token);
+    if (!user) return cb({ ok: false, error: "Session expired. Please log in again." });
+    socket.data.userId = user.id;
+    socket.data.username = user.username;
+    cb({ ok: true, token, username: user.username, stats: statsForUser(user.id)! });
+  });
+
+  socket.on("auth:logout", ({ token }) => {
+    destroySession(token);
+    socket.data.userId = null;
+    socket.data.username = null;
+  });
+
+  socket.on("room:create", (cb) => {
+    if (!socket.data.userId || !socket.data.username) return cb({ ok: false, error: "Please log in first." });
+    const room = createRoom(socket.id, socket.data.username, socket.data.userId);
     socket.join(room.code);
     cb({ ok: true, code: room.code });
     broadcastState(io, room);
   });
 
-  socket.on("room:join", ({ code, name }, cb) => {
-    const cleanName = validName(name);
-    if (!cleanName) return cb({ ok: false, error: "Enter a valid name." });
+  socket.on("room:join", ({ code }, cb) => {
+    if (!socket.data.userId || !socket.data.username) return cb({ ok: false, error: "Please log in first." });
     const room = getRoom(code);
     if (!room) return cb({ ok: false, error: "Room not found." });
     if (room.phase !== GamePhase.LOBBY) return cb({ ok: false, error: "Game already in progress." });
     if (room.seats.length >= MAX_PLAYERS) return cb({ ok: false, error: "Room is full." });
-    room.seats.push({ socketId: socket.id, name: cleanName, connected: true });
+    room.seats.push({ socketId: socket.id, userId: socket.data.userId, name: socket.data.username, connected: true });
     socket.join(room.code);
     repairRoleCounts(room);
     cb({ ok: true });

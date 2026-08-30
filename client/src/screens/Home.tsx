@@ -1,16 +1,28 @@
 import { useState } from "react";
+import type { AuthResult, LoginResult } from "@nightfall/shared";
+import { AuthPopup } from "../components/AuthPopup";
 import { socket } from "../socket";
+import type { AuthState } from "../useGame";
 
-export function Home() {
+export function Home({
+  auth,
+  login,
+  register,
+}: {
+  auth: AuthState;
+  login: (username: string, password: string) => Promise<LoginResult>;
+  register: (username: string, password: string) => Promise<AuthResult>;
+}) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   const create = () => {
     setError(null);
     setBusy(true);
-    socket.emit("room:create", { name }, (res) => {
+    socket.emit("room:create", (res) => {
       setBusy(false);
       if (!res.ok) setError(res.error);
     });
@@ -19,7 +31,7 @@ export function Home() {
   const join = () => {
     setError(null);
     setBusy(true);
-    socket.emit("room:join", { code: code.trim().toUpperCase(), name }, (res) => {
+    socket.emit("room:join", { code: code.trim().toUpperCase() }, (res) => {
       setBusy(false);
       if (!res.ok) setError(res.error);
     });
@@ -55,28 +67,43 @@ export function Home() {
           <h1 className="home-title">Nightfall</h1>
           <p className="subtitle">A quiet game of hidden roles, played beneath a watchful moon.</p>
 
-          <label className="field">
-            <span>Your name</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="Enter your name" />
-          </label>
-
-          <div className="home-actions">
-            <button disabled={busy || !name.trim()} onClick={create}>
-              Create Room
-            </button>
-
-            <div className="join-row">
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="ROOM-CODE"
-                maxLength={9}
-              />
-              <button disabled={busy || !name.trim() || !code.trim()} onClick={join}>
-                Join Room
+          {auth.status === "loading" ? (
+            <p className="hint">Resuming session...</p>
+          ) : auth.status === "unauthenticated" ? (
+            <>
+              <label className="field">
+                <span>Your name</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} placeholder="Enter your name" />
+              </label>
+              <div className="home-actions">
+                <button disabled={!name.trim()} onClick={() => setShowPopup(true)}>
+                  Continue
+                </button>
+              </div>
+              {showPopup ? (
+                <AuthPopup
+                  username={name.trim()}
+                  login={login}
+                  register={register}
+                  onSuccess={() => setShowPopup(false)}
+                  onClose={() => setShowPopup(false)}
+                />
+              ) : null}
+            </>
+          ) : (
+            <div className="home-actions">
+              <button disabled={busy} onClick={create}>
+                Create Room
               </button>
+
+              <div className="join-row">
+                <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="ROOM-CODE" maxLength={9} />
+                <button disabled={busy || !code.trim()} onClick={join}>
+                  Join Room
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {error ? <p className="error">{error}</p> : null}
         </div>

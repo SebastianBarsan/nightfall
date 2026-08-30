@@ -1,10 +1,19 @@
 import type { Role, RoleCounts } from "./roles.js";
-import type { ChatMessage, RoomSnapshot } from "./types.js";
+import type { ChatMessage, PlayerStats, RoomSnapshot } from "./types.js";
+
+export type AuthOk = { ok: true; token: string; username: string; stats: PlayerStats };
+export type AuthResult = AuthOk | { ok: false; error: string };
+export type LoginResult = AuthOk | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" };
 
 // ---- Client -> Server ----
 export interface ClientToServerEvents {
-  "room:create": (payload: { name: string }, cb: (res: { ok: true; code: string } | { ok: false; error: string }) => void) => void;
-  "room:join": (payload: { code: string; name: string }, cb: (res: { ok: true } | { ok: false; error: string }) => void) => void;
+  "auth:register": (payload: { username: string; password: string }, cb: (res: AuthResult) => void) => void;
+  "auth:login": (payload: { username: string; password: string }, cb: (res: LoginResult) => void) => void;
+  "auth:resume": (payload: { token: string }, cb: (res: AuthResult) => void) => void;
+  "auth:logout": (payload: { token: string }) => void;
+
+  "room:create": (cb: (res: { ok: true; code: string } | { ok: false; error: string }) => void) => void;
+  "room:join": (payload: { code: string }, cb: (res: { ok: true } | { ok: false; error: string }) => void) => void;
   "room:start": () => void;
   "room:playAgain": () => void;
   "room:configureRoles": (payload: { roleCounts: RoleCounts }) => void;
@@ -27,6 +36,7 @@ export interface ServerToClientEvents {
   "room:error": (payload: { message: string }) => void;
 
   "night:yourRole": (payload: { role: Role }) => void;
+  "stats:update": (payload: { stats: PlayerStats }) => void;
 
   "werewolf:teamReveal": (payload: { fellowWolfSocketIds: string[] }) => void;
   "werewolf:centerPrompt": (payload: { availableCenterIndices: number[] }) => void;

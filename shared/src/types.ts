@@ -51,6 +51,28 @@ export interface GameResult {
   mvp: { socketId: string; name: string; reason: string } | null;
 }
 
+/** Per-account stats, persisted server-side and pushed to that account's own client only. */
+export interface PlayerStats {
+  username: string;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  winsGood: number;
+  winsEvil: number;
+  winsJester: number;
+  hunterShotsTaken: number;
+  /** Times a Hunter's shot hit a Vampire — i.e. "vampires eliminated as Hunter." */
+  hunterShotsHit: number;
+  hunterShotAccuracy: number | null;
+  mvpCount: number;
+  currentWinStreak: number;
+  longestWinStreak: number;
+  mostCommonStartingRole: Role | null;
+  mostCommonEndingRole: Role | null;
+  startingRoleCounts: Record<Role, number>;
+  endingRoleCounts: Record<Role, number>;
+}
+
 /** Sanitized room snapshot broadcast to every client — never contains hidden card values. */
 export interface RoomSnapshot {
   code: string;
@@ -71,6 +93,10 @@ export interface RoomSnapshot {
 
 export const MIN_NAME_LENGTH = 1;
 export const MAX_NAME_LENGTH = 20;
+export const MIN_USERNAME_LENGTH = 3;
+export const MIN_PASSWORD_LENGTH = 4;
+/** Letters, digits, underscore, hyphen only — keeps seat labels readable. */
+export const USERNAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 export const DEFAULT_DAY_DURATION_SEC = 30;
 /** Pause after dealing, before the first night step starts, so players have time to read their
  * role reveal and dismiss it before any turn timer starts counting down. */

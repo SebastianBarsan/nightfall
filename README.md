@@ -1,8 +1,10 @@
 # Nightfall
 
 A real-time social deduction game (One Night Werewolf-style) built as a prototype:
-React + TypeScript frontend, Node.js + Fastify + Socket.io backend, all game state
-held **in-memory** on the server (no Redis/PostgreSQL/auth — see "Scope" below).
+React + TypeScript frontend, Node.js + Fastify + Socket.io backend. Game state
+itself is still held **in-memory** on the server (no Redis/PostgreSQL — see "Scope"
+below); player accounts and stats are the one piece of durable state, in a local
+SQLite file.
 
 ## Running it
 
@@ -23,7 +25,9 @@ Run them separately if you prefer: `npm run dev:server` / `npm run dev:client`.
 shared/   role definitions, deck-building, and the full Socket.io event contract
           (types shared verbatim between client and server)
 server/   Fastify + Socket.io backend — the authoritative game state machine
-          lives in server/src/gameEngine.ts, in-memory room store in roomStore.ts
+          lives in server/src/gameEngine.ts, in-memory room store in roomStore.ts;
+          accounts/auth in auth.ts, the SQLite layer in db.ts, and per-account
+          stats in stats.ts
 client/   React + TS + Vite frontend, one screen per game phase (src/screens/)
 ```
 
@@ -39,8 +43,20 @@ This was built as a **prototype-first** pass, per explicit choice at kickoff:
 - **No WebRTC voice chat.** Day/Voting phase mute/unmute is not implemented at
   all (explicitly out of scope). A lightweight text chat during the Day phase
   stands in for discussion instead.
-- **No auth.** Players just pick a display name each session; there's no
-  persistent identity across games.
+- **Simple username+password accounts, SQLite-backed.** Every player registers
+  (or logs in) on the home screen before creating/joining a room; the username
+  *is* the in-game display name. Passwords are hashed with Node's built-in
+  `crypto.scryptSync` (random salt per user) — no bcrypt dependency needed.
+  Per-account stats (games played, wins/losses by faction, Hunter shot
+  accuracy, MVP count, win streaks, starting/ending role breakdowns) persist in
+  a single SQLite file (`server/data/nightfall.db`, via Node's built-in
+  `node:sqlite`) so they survive server restarts — the one piece of state in
+  this project that isn't purely in-memory. Login **sessions** are still
+  in-memory only and reset on server restart (matching everything else here);
+  only the stats themselves are durable.
+- **No password recovery, by design.** If you forget your password, there is
+  no reset flow — pick a new username. Keeps auth intentionally minimal for a
+  prototype with no email collection at all.
 - **Player count is 3–10.** The host configures the role deck per game from
   the lobby (Werewolf count, optional Insomniac/Hunter, Villager count) —
   Seer, Robber, Troublemaker, and Tanner are always exactly 1 each. The

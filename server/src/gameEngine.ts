@@ -22,6 +22,7 @@ import {
 } from "@nightfall/shared";
 import { deleteRoom, seatIndexOf, ServerRoom } from "./roomStore.js";
 import { buildSnapshot } from "./snapshot.js";
+import { GameStatsInput, recordGameStats } from "./stats.js";
 
 export type IO = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -619,6 +620,30 @@ function finalizeReveal(
     players,
     mvp,
   };
+
+  const hunterSeat = voteEliminatedSeats.find((i) => finalArray[i] === Role.HUNTER);
+  const statsInput: GameStatsInput = {
+    players: room.seats.map((seat, i) => ({
+      userId: seat.userId,
+      originalRole: originalArray[i],
+      finalRole: finalArray[i],
+      won: players[i].won,
+    })),
+    mvpUserId: mvp ? (room.seats.find((s) => s.socketId === mvp.socketId)?.userId ?? null) : null,
+    hunter:
+      hunterSeat !== undefined
+        ? {
+            userId: room.seats[hunterSeat].userId,
+            shotTaken: hunterShotSeat !== null,
+            shotHitWerewolf: hunterShotSeat !== null && finalArray[hunterShotSeat] === Role.WEREWOLF,
+          }
+        : null,
+  };
+  const updatedStats = recordGameStats(statsInput);
+  for (const seat of room.seats) {
+    const stats = updatedStats.get(seat.userId);
+    if (stats) io.to(seat.socketId).emit("stats:update", { stats });
+  }
 
   broadcastState(io, room);
 }

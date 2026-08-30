@@ -1,6 +1,32 @@
 import { useEffect, useRef, useState } from "react";
-import type { Role, RoomSnapshot } from "@nightfall/shared";
+import type { AuthResult, LoginResult, PlayerStats, Role, RoomSnapshot } from "@nightfall/shared";
 import { socket } from "./socket";
+
+const TOKEN_KEY = "nightfall.authToken";
+
+function readStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeToken(token: string): void {
+  try {
+    localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // ignore — auth still works for this tab, just won't survive a reload
+  }
+}
+
+function clearStoredToken(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export interface SeerResult {
   roles: Role[];
@@ -8,10 +34,18 @@ export interface SeerResult {
   viewedCenterIndices: number[] | null;
 }
 
+export interface AuthState {
+  status: "loading" | "unauthenticated" | "authenticated";
+  token: string | null;
+  username: string | null;
+  stats: PlayerStats | null;
+}
+
 export interface GameUiState {
   connected: boolean;
   snapshot: RoomSnapshot | null;
   errorMessage: string | null;
+  auth: AuthState;
 
   myRole: Role | null;
   fellowWolves: string[] | null;
@@ -25,7 +59,6 @@ export interface GameUiState {
   troublemakerAcked: boolean;
   insomniacPromptActive: boolean;
   insomniacResult: { currentRole: Role } | null;
-  coinSpawns: number;
   chatFlash: boolean;
 }
 
@@ -33,6 +66,12 @@ const initialState: GameUiState = {
   connected: socket.connected,
   snapshot: null,
   errorMessage: null,
+  auth: {
+    status: readStoredToken() ? "loading" : "unauthenticated",
+    token: readStoredToken(),
+    username: null,
+    stats: null,
+  },
   myRole: null,
   fellowWolves: null,
   centerPromptIndices: null,
@@ -45,7 +84,6 @@ const initialState: GameUiState = {
   troublemakerAcked: false,
   insomniacPromptActive: false,
   insomniacResult: null,
-  coinSpawns: 0,
   chatFlash: false,
 };
 
@@ -56,9 +94,32 @@ export function useGame() {
   const prevNightStepEndsAt = useRef<number | null>(null);
 
   useEffect(() => {
-    const onConnect = () => setState((s) => ({ ...s, connected: true }));
+    const attemptResume = () => {
+      const token = readStoredToken();
+      if (!token) {
+        setState((s) => ({ ...s, auth: { status: "unauthenticated", token: null, username: null, stats: null } }));
+        return;
+      }
+      socket.emit("auth:resume", { token }, (res) => {
+        if (res.ok) {
+          setState((s) => ({ ...s, auth: { status: "authenticated", token: res.token, username: res.username, stats: res.stats } }));
+        } else {
+          clearStoredToken();
+          setState((s) => ({ ...s, auth: { status: "unauthenticated", token: null, username: null, stats: null } }));
+        }
+      });
+    };
+
+    const onConnect = () => {
+      setState((s) => ({ ...s, connected: true }));
+      attemptResume();
+    };
     const onDisconnect = () => setState((s) => ({ ...s, connected: false }));
     const onError = (p: { message: string }) => setState((s) => ({ ...s, errorMessage: p.message }));
+    const onStatsUpdate = (p: { stats: PlayerStats }) =>
+      setState((s) => ({ ...s, auth: { ...s.auth, stats: p.stats } }));
+
+    attemptResume();
 
     const onRoomState = (snapshot: RoomSnapshot) => {
       setState((s) => {
@@ -121,7 +182,6 @@ export function useGame() {
         insomniacResult: null,
       }));
 
-    const onCoinSpawn = () => setState((s) => ({ ...s, coinSpawns: s.coinSpawns + 1 }));
     const onWolfTeam = (p: { fellowWolfSocketIds: string[] }) =>
       setState((s) => ({ ...s, fellowWolves: p.fellowWolfSocketIds }));
     const onCenterPrompt = (p: { availableCenterIndices: number[] }) =>
@@ -143,9 +203,9 @@ export function useGame() {
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("room:error", onError);
+    socket.on("stats:update", onStatsUpdate);
     socket.on("room:state", onRoomState);
     socket.on("night:yourRole", onYourRole);
-    socket.on("coin:spawn", onCoinSpawn);
     socket.on("werewolf:teamReveal", onWolfTeam);
     socket.on("werewolf:centerPrompt", onCenterPrompt);
     socket.on("werewolf:centerResult", onCenterResult);
@@ -162,9 +222,9 @@ export function useGame() {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("room:error", onError);
+      socket.off("stats:update", onStatsUpdate);
       socket.off("room:state", onRoomState);
       socket.off("night:yourRole", onYourRole);
-      socket.off("coin:spawn", onCoinSpawn);
       socket.off("werewolf:teamReveal", onWolfTeam);
       socket.off("werewolf:centerPrompt", onCenterPrompt);
       socket.off("werewolf:centerResult", onCenterResult);
@@ -181,5 +241,33 @@ export function useGame() {
 
   const clearError = () => setState((s) => ({ ...s, errorMessage: null }));
 
-  return { state, clearError };
+  const applyAuthOk = (res: { token: string; username: string; stats: PlayerStats }) => {
+    storeToken(res.token);
+    setState((s) => ({ ...s, auth: { status: "authenticated", token: res.token, username: res.username, stats: res.stats } }));
+  };
+
+  const login = (username: string, password: string): Promise<LoginResult> =>
+    new Promise((resolve) => {
+      socket.emit("auth:login", { username, password }, (res) => {
+        if (res.ok) applyAuthOk(res);
+        resolve(res);
+      });
+    });
+
+  const register = (username: string, password: string): Promise<AuthResult> =>
+    new Promise((resolve) => {
+      socket.emit("auth:register", { username, password }, (res) => {
+        if (res.ok) applyAuthOk(res);
+        resolve(res);
+      });
+    });
+
+  const logout = () => {
+    const token = state.auth.token;
+    if (token) socket.emit("auth:logout", { token });
+    clearStoredToken();
+    setState((s) => ({ ...s, auth: { status: "unauthenticated", token: null, username: null, stats: null } }));
+  };
+
+  return { state, clearError, login, register, logout };
 }

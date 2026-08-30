@@ -13,6 +13,7 @@ import {
 
 export interface Seat {
   socketId: string;
+  userId: number;
   name: string;
   connected: boolean;
 }
@@ -64,6 +65,8 @@ export interface ServerRoom {
 
 const rooms = new Map<string, ServerRoom>();
 
+// Kept to exactly 4 letters each so every code is the same length (WORD-DDDD, 9
+// chars) — a longer word here silently overflowed the join-code input's maxLength.
 const CODE_WORDS = [
   "WOLF",
   "MOON",
@@ -73,7 +76,7 @@ const CODE_WORDS = [
   "LORE",
   "PACK",
   "MIST",
-  "RAVEN",
+  "CROW",
   "OMEN",
 ];
 
@@ -87,12 +90,12 @@ function generateRoomCode(): string {
   return code;
 }
 
-export function createRoom(hostSocketId: string, hostName: string): ServerRoom {
+export function createRoom(hostSocketId: string, hostName: string, hostUserId: number): ServerRoom {
   const code = generateRoomCode();
   const room: ServerRoom = {
     code,
     hostSocketId,
-    seats: [{ socketId: hostSocketId, name: hostName, connected: true }],
+    seats: [{ socketId: hostSocketId, userId: hostUserId, name: hostName, connected: true }],
     phase: GamePhase.LOBBY,
     settings: { dayDurationSec: DEFAULT_DAY_DURATION_SEC },
     roleCounts: defaultRoleCounts(1),
