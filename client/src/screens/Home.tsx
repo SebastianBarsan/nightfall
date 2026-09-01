@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { AuthResult, LoginResult } from "@nightfall/shared";
 import { AuthPopup } from "../components/AuthPopup";
+import { RoleGuide } from "../components/RoleGuide";
 import { socket } from "../socket";
 import type { AuthState } from "../useGame";
 
@@ -18,6 +19,7 @@ export function Home({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
+  const [guideVisible, setGuideVisible] = useState(false);
 
   const create = () => {
     setError(null);
@@ -39,6 +41,7 @@ export function Home({
 
   return (
     <div className="screen home">
+      <RoleGuide visible={guideVisible} onToggle={() => setGuideVisible((v) => !v)} />
       <div className="home-scene">
         <div className="moon" />
         <div className="fog" />
