@@ -1,6 +1,7 @@
 import {
   MANDATORY_SINGLE_ROLES,
   MAX_PLAYERS,
+  maxVillagerCount,
   maxWerewolfCount,
   MIN_PLAYERS,
   minWerewolfCount,
@@ -79,6 +80,7 @@ function RoleSummary({ playerCount, roleCounts }: { playerCount: number; roleCou
 function RoleEditor({ playerCount, roleCounts }: { playerCount: number; roleCounts: RoleCounts }) {
   const min = minWerewolfCount(playerCount);
   const max = maxWerewolfCount(playerCount);
+  const villagerMax = maxVillagerCount(playerCount);
   const total = roleCountsTotal(roleCounts);
   const expected = totalCardSlots(playerCount);
 
@@ -142,8 +144,14 @@ function RoleEditor({ playerCount, roleCounts }: { playerCount: number; roleCoun
             −
           </button>
           <span>{roleCounts.villager}</span>
-          <button onClick={() => push({ ...roleCounts, villager: roleCounts.villager + 1 })}>+</button>
+          <button
+            disabled={roleCounts.villager >= villagerMax}
+            onClick={() => push({ ...roleCounts, villager: roleCounts.villager + 1 })}
+          >
+            +
+          </button>
         </div>
+        <span className="hint">(max {villagerMax})</span>
       </div>
 
       <p className={`hint role-total${total === expected ? " ok" : " mismatch"}`}>

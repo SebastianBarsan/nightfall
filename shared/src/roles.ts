@@ -29,7 +29,7 @@ export function roleDisplayName(role: Role): string {
 }
 
 export const MIN_PLAYERS = 3;
-export const MAX_PLAYERS = 10;
+export const MAX_PLAYERS = 7;
 export const CENTER_CARD_COUNT = 3;
 
 // Always exactly one of each of these — the host cannot remove or add extra copies.
@@ -55,12 +55,36 @@ export function maxWerewolfCount(playerCount: number): number {
   return Math.max(minWerewolfCount(playerCount), Math.floor(playerCount / 2));
 }
 
-/** A valid starting configuration for the given player count: minimum Werewolves, no Insomniac/Hunter, rest Villagers. */
+/** Villagers are capped at 2 regardless of player count — extra slots go to Insomniac/Hunter/Werewolf instead. */
+export function maxVillagerCount(_playerCount: number): number {
+  return 2;
+}
+
+/** A valid starting configuration for the given player count: minimum Werewolves, Insomniac/Hunter
+ * included as needed to keep Villagers within their cap, rest Villagers. */
 export function defaultRoleCounts(playerCount: number): RoleCounts {
-  const werewolf = minWerewolfCount(playerCount);
-  const used = MANDATORY_SINGLE_ROLES.length + werewolf;
-  const villager = Math.max(0, totalCardSlots(playerCount) - used);
-  return { werewolf, insomniac: 0, hunter: 0, villager };
+  const villagerCap = maxVillagerCount(playerCount);
+  const werewolfMax = maxWerewolfCount(playerCount);
+  let werewolf = minWerewolfCount(playerCount);
+  let insomniac = 0;
+  let hunter = 0;
+  let remaining = totalCardSlots(playerCount) - MANDATORY_SINGLE_ROLES.length - werewolf;
+
+  if (remaining > villagerCap) {
+    insomniac = 1;
+    remaining -= 1;
+  }
+  if (remaining > villagerCap) {
+    hunter = 1;
+    remaining -= 1;
+  }
+  while (remaining > villagerCap && werewolf < werewolfMax) {
+    werewolf += 1;
+    remaining -= 1;
+  }
+
+  const villager = Math.max(0, remaining);
+  return { werewolf, insomniac, hunter, villager };
 }
 
 export function roleCountsTotal(counts: RoleCounts): number {
@@ -80,6 +104,8 @@ export function validateRoleCounts(playerCount: number, counts: RoleCounts): str
   if (counts.insomniac !== 0 && counts.insomniac !== 1) return "Insomniac must be included 0 or 1 times.";
   if (counts.hunter !== 0 && counts.hunter !== 1) return "Hunter must be included 0 or 1 times.";
   if (!Number.isInteger(counts.villager) || counts.villager < 0) return "Villager count cannot be negative.";
+  const maxVillager = maxVillagerCount(playerCount);
+  if (counts.villager > maxVillager) return `At most ${maxVillager} Villagers allowed.`;
   const total = roleCountsTotal(counts);
   const expected = totalCardSlots(playerCount);
   if (total !== expected) {
