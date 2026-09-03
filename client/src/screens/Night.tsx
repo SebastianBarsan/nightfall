@@ -9,7 +9,6 @@ import type { GameUiState } from "../useGame";
 import { roleColor, roleDisplayName } from "../roleTheme";
 
 export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiState }) {
-  const mySeat = snapshot.players.findIndex((p) => p.socketId === socket.id);
   const n = snapshot.players.length;
 
   // Belt-and-suspenders: even if a stale prompt flag slipped through, tie every tap-target
@@ -213,8 +212,6 @@ export function Night({ snapshot, ui }: { snapshot: RoomSnapshot; ui: GameUiStat
           </p>
         </div>
       ) : null}
-
-      <p className="hint">Mine: seat {mySeat}</p>
     </div>
   );
 }

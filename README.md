@@ -14,7 +14,7 @@ npm run dev          # runs server (port 3001) and client (port 5173) together
 ```
 
 Then open http://localhost:5173 in **multiple browser tabs/windows** (one per
-player — you need 5 to 10 to start a game) and play through create/join → night
+player — you need 3 to 7 to start a game) and play through create/join → night
 → day → voting → reveal.
 
 Run them separately if you prefer: `npm run dev:server` / `npm run dev:client`.
