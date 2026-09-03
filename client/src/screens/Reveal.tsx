@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { RoomSnapshot } from "@nightfall/shared";
 import { socket } from "../socket";
-import { factionDisplayName, roleDisplayName } from "../roleTheme";
+import { factionDisplayName, roleColor, roleDisplayName } from "../roleTheme";
 
 export function Reveal({ snapshot }: { snapshot: RoomSnapshot }) {
   const [showLog, setShowLog] = useState(false);
@@ -55,7 +55,16 @@ export function Reveal({ snapshot }: { snapshot: RoomSnapshot }) {
         {showLog ? "Hide" : "Show"} full night log
       </button>
       {showLog ? (
-        <pre className="log">{JSON.stringify(result.actionLog, null, 2)}</pre>
+        <ol className="night-log">
+          {result.actionLog.map((entry, i) => (
+            <li key={i} className="night-log-entry">
+              <span className="night-log-role" style={{ color: roleColor(entry.role) }}>
+                {roleDisplayName(entry.role)}
+              </span>
+              <span className="night-log-desc">{entry.description}</span>
+            </li>
+          ))}
+        </ol>
       ) : null}
 
       {isHost ? (

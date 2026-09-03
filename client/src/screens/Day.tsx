@@ -29,11 +29,15 @@ export function Day({ snapshot }: { snapshot: RoomSnapshot }) {
 
       <div className="chat">
         <div className="chat-log">
-          {snapshot.chat.map((m, i) => (
-            <div key={i} className="chat-line">
-              <strong>{m.name}:</strong> {m.text}
-            </div>
-          ))}
+          {snapshot.chat.length === 0 ? (
+            <p className="chat-empty">No messages yet. Start the discussion.</p>
+          ) : (
+            snapshot.chat.map((m, i) => (
+              <div key={i} className="chat-line">
+                <strong>{m.name}:</strong> {m.text}
+              </div>
+            ))
+          )}
         </div>
         <div className="chat-input">
           <input

@@ -400,6 +400,12 @@ h1 {
   margin-bottom: 0.3rem;
   font-size: 0.92rem;
 }
+.chat-empty {
+  margin: 0;
+  opacity: 0.6;
+  font-size: 0.9rem;
+  font-style: italic;
+}
 .chat-input {
   display: flex;
   gap: 0.5rem;
@@ -412,6 +418,21 @@ h1 {
   font-variant-numeric: tabular-nums;
   font-weight: bold;
   color: #ffcf6e;
+}
+
+.countdown--urgent {
+  color: #ff6b6b;
+  animation: countdown-pulse 1s ease-in-out infinite;
+}
+
+@keyframes countdown-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
 .banner {
@@ -509,14 +530,32 @@ h1 {
   color: #ff8a8a;
 }
 
-.log {
+.night-log {
   background: #0f1122;
   border: 1px solid #33376b;
   border-radius: 8px;
-  padding: 0.8rem;
-  max-height: 300px;
+  padding: 0.8rem 0.8rem 0.8rem 2rem;
+  margin: 0.6rem 0 0;
+  max-height: 320px;
   overflow: auto;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.night-log-entry {
+  margin-bottom: 0.5rem;
+}
+.night-log-entry:last-child {
+  margin-bottom: 0;
+}
+
+.night-log-role {
+  font-weight: 700;
+  margin-right: 0.4rem;
+}
+
+.night-log-desc {
+  opacity: 0.9;
 }
 
 /* Role reveal: a full-screen "fade to dark, then show the card" moment that replaces the old
