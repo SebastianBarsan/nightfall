@@ -68,7 +68,7 @@ export function Home({
 
         <div className="home-content">
           <h1 className="home-title">Nightfall</h1>
-          <p className="subtitle">A quiet game of hidden roles, played beneath a watchful moon.</p>
+          <p className="subtitle">Lie well, or die honest.</p>
 
           {auth.status === "loading" ? (
             <p className="hint">Resuming session...</p>
