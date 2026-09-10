@@ -719,6 +719,22 @@ h1 {
   color: #16192b;
 }
 
+/* Daytime screens (Day discussion + Voting) get an airy, sunlit serif,
+   as a counterpoint to the gothic faces used everywhere at night. */
+.screen.day h1,
+.screen.voting h1 {
+  font-family: "Marcellus", "Cinzel", "Segoe UI", serif;
+  letter-spacing: 0.06em;
+}
+
+.screen.day .hint {
+  font-family: "Marcellus", "Cinzel", "Segoe UI", serif;
+  letter-spacing: 0.03em;
+  font-size: 1.15rem;
+  opacity: 0.95;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.6);
+}
+
 .sun {
   position: absolute;
   top: 12%;
