@@ -929,6 +929,9 @@ h1 {
   top: 1.5rem;
   left: 1.25rem;
   z-index: 50;
+  font-family: "Cinzel", "Segoe UI", serif;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .role-guide-header {
@@ -943,6 +946,12 @@ h1 {
   font-family: "Cinzel", "Segoe UI", serif;
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+
+.role-guide-header .link-button {
+  font-family: "Cinzel", "Segoe UI", serif;
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .role-guide-entry {

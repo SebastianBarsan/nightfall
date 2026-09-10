@@ -8,7 +8,7 @@ const ROLE_HOWTO: Record<Role, string> = {
   [Role.TROUBLEMAKER]: "May swap two other players' cards without looking at either.",
   [Role.INSOMNIAC]: "At the end of the night, may check their own card to see if it changed.",
   [Role.HUNTER]: "If voted out, immediately takes one other player down too.",
-  [Role.TANNER]: "Wins alone if voted out — everyone else loses.",
+  [Role.TANNER]: "Wins alone if voted out; everyone else loses.",
   [Role.VILLAGER]: "No night action. Vote wisely by day.",
 };
 
