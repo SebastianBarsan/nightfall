@@ -101,9 +101,7 @@ function RoleEditor({ playerCount, roleCounts }: { playerCount: number; roleCoun
             +
           </button>
         </div>
-        <span className="hint">
-          ({min}-{max})
-        </span>
+        <span className="hint">{min === max ? `locked at ${max}` : `(${min}-${max})`}</span>
       </div>
 
       {MANDATORY_SINGLE_ROLES.map((r) => (

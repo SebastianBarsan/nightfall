@@ -60,9 +60,9 @@ This was built as a **prototype-first** pass, per explicit choice at kickoff:
 - **Player count is 3–7.** The host configures the role deck per game from
   the lobby (Werewolf count, optional Insomniac/Hunter, Villager count) —
   Seer, Robber, Troublemaker, and Tanner are always exactly 1 each. The
-  server enforces `MIN_PLAYERS = 3`/`MAX_PLAYERS = 7`, at least 2 Werewolves
-  (capped at half the table), at most 2 Villagers, and that the chosen counts
-  add up to exactly `N + 3` cards before a game can start.
+  server enforces `MIN_PLAYERS = 3`/`MAX_PLAYERS = 7`, exactly 2 Werewolves
+  (a 3-player host may drop to 1), at most 2 Villagers, and that the chosen
+  counts add up to exactly `N + 3` cards before a game can start.
 - **Room codes are `WORD-DDDD`** (e.g. `WOLF-4821`), matching the example in
   the spec literally, even though the spec's prose says "4-character."
 - **No turn-timing obfuscation.** The spec's `SPAWN_COIN`/`TAP_COIN` dummy-

@@ -47,12 +47,13 @@ export function totalCardSlots(playerCount: number): number {
   return playerCount + CENTER_CARD_COUNT;
 }
 
-export function minWerewolfCount(_playerCount: number): number {
-  return 2;
+// A 3-player table may run with a single Werewolf; every larger table is locked at exactly 2.
+export function minWerewolfCount(playerCount: number): number {
+  return playerCount <= 3 ? 1 : 2;
 }
 
-export function maxWerewolfCount(playerCount: number): number {
-  return Math.max(minWerewolfCount(playerCount), Math.floor(playerCount / 2));
+export function maxWerewolfCount(_playerCount: number): number {
+  return 2;
 }
 
 /** Villagers are capped at 2 regardless of player count — extra slots go to Insomniac/Hunter/Werewolf instead. */
@@ -60,12 +61,12 @@ export function maxVillagerCount(_playerCount: number): number {
   return 2;
 }
 
-/** A valid starting configuration for the given player count: minimum Werewolves, Insomniac/Hunter
- * included as needed to keep Villagers within their cap, rest Villagers. */
+/** A valid starting configuration for the given player count: 2 Werewolves (a 3-player host may
+ * drop to 1 in the lobby), Insomniac/Hunter included as needed to keep Villagers within their
+ * cap, rest Villagers. */
 export function defaultRoleCounts(playerCount: number): RoleCounts {
   const villagerCap = maxVillagerCount(playerCount);
-  const werewolfMax = maxWerewolfCount(playerCount);
-  let werewolf = minWerewolfCount(playerCount);
+  const werewolf = maxWerewolfCount(playerCount);
   let insomniac = 0;
   let hunter = 0;
   let remaining = totalCardSlots(playerCount) - MANDATORY_SINGLE_ROLES.length - werewolf;
@@ -76,10 +77,6 @@ export function defaultRoleCounts(playerCount: number): RoleCounts {
   }
   if (remaining > villagerCap) {
     hunter = 1;
-    remaining -= 1;
-  }
-  while (remaining > villagerCap && werewolf < werewolfMax) {
-    werewolf += 1;
     remaining -= 1;
   }
 
