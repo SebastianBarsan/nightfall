@@ -191,6 +191,11 @@ function handleDisconnect(room: ServerRoom, socketId: string): void {
     repairRoleCounts(room);
   } else {
     room.seats[seat].connected = false;
+    // Hand the host role to someone still here, or nobody can start the next round.
+    if (room.hostSocketId === socketId) {
+      const next = room.seats.find((s) => s.connected);
+      if (next) room.hostSocketId = next.socketId;
+    }
   }
 
   cleanupEmptyRoom(room);
