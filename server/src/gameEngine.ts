@@ -20,7 +20,7 @@ import {
   validateRoleCounts,
   VOTING_DURATION_MS,
 } from "@nightfall/shared";
-import { deleteRoom, seatIndexOf, ServerRoom } from "./roomStore.js";
+import { deleteRoom, repairRoleCounts, seatIndexOf, ServerRoom } from "./roomStore.js";
 import { buildSnapshot } from "./snapshot.js";
 import { GameStatsInput, recordGameStats } from "./stats.js";
 
@@ -682,6 +682,9 @@ export function resetForPlayAgain(io: IO, room: ServerRoom, requestorSocketId: s
     io.to(requestorSocketId).emit("room:error", { message: "A new round can only start after the reveal." });
     return;
   }
+  // Players who dropped during the game would otherwise linger as ghost seats in the lobby.
+  room.seats = room.seats.filter((s) => s.connected);
+  repairRoleCounts(room);
   room.phase = GamePhase.LOBBY;
   room.cardArray = null;
   room.originalArray = null;
