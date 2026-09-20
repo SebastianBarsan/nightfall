@@ -676,6 +676,12 @@ export function resetForPlayAgain(io: IO, room: ServerRoom, requestorSocketId: s
     io.to(requestorSocketId).emit("room:error", { message: "Only the host can start a new round." });
     return;
   }
+  // Without this guard the host could reset mid-game, leaving night/day/voting timers running
+  // against a lobby-phase room.
+  if (room.phase !== GamePhase.REVEAL) {
+    io.to(requestorSocketId).emit("room:error", { message: "A new round can only start after the reveal." });
+    return;
+  }
   room.phase = GamePhase.LOBBY;
   room.cardArray = null;
   room.originalArray = null;
