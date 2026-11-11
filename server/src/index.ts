@@ -62,30 +62,45 @@ io.on("connection", (socket) => {
   socket.data.userId = null;
   socket.data.username = null;
 
-  socket.on("auth:register", ({ username, password }, cb) => {
-    const res = registerUser(username, password);
-    if (!res.ok) return cb(res);
-    const token = createSession(res.user);
-    socket.data.userId = res.user.id;
-    socket.data.username = res.user.username;
-    cb({ ok: true, token, username: res.user.username, stats: statsForUser(res.user.id)! });
+  socket.on("auth:register", async ({ username, password }, cb) => {
+    try {
+      const res = await registerUser(username, password);
+      if (!res.ok) return cb(res);
+      const token = createSession(res.user);
+      socket.data.userId = res.user.id;
+      socket.data.username = res.user.username;
+      cb({ ok: true, token, username: res.user.username, stats: (await statsForUser(res.user.id))! });
+    } catch (err) {
+      console.error("auth:register failed:", err);
+      cb({ ok: false, error: "Server error. Please try again." });
+    }
   });
 
-  socket.on("auth:login", ({ username, password }, cb) => {
-    const res = loginUser(username, password);
-    if (!res.ok) return cb(res);
-    const token = createSession(res.user);
-    socket.data.userId = res.user.id;
-    socket.data.username = res.user.username;
-    cb({ ok: true, token, username: res.user.username, stats: statsForUser(res.user.id)! });
+  socket.on("auth:login", async ({ username, password }, cb) => {
+    try {
+      const res = await loginUser(username, password);
+      if (!res.ok) return cb(res);
+      const token = createSession(res.user);
+      socket.data.userId = res.user.id;
+      socket.data.username = res.user.username;
+      cb({ ok: true, token, username: res.user.username, stats: (await statsForUser(res.user.id))! });
+    } catch (err) {
+      console.error("auth:login failed:", err);
+      cb({ ok: false, error: "SERVER_ERROR" });
+    }
   });
 
-  socket.on("auth:resume", ({ token }, cb) => {
-    const user = resumeSession(token);
-    if (!user) return cb({ ok: false, error: "Session expired. Please log in again." });
-    socket.data.userId = user.id;
-    socket.data.username = user.username;
-    cb({ ok: true, token, username: user.username, stats: statsForUser(user.id)! });
+  socket.on("auth:resume", async ({ token }, cb) => {
+    try {
+      const user = resumeSession(token);
+      if (!user) return cb({ ok: false, error: "Session expired. Please log in again." });
+      socket.data.userId = user.id;
+      socket.data.username = user.username;
+      cb({ ok: true, token, username: user.username, stats: (await statsForUser(user.id))! });
+    } catch (err) {
+      console.error("auth:resume failed:", err);
+      cb({ ok: false, error: "Server error. Please try again." });
+    }
   });
 
   socket.on("auth:logout", ({ token }) => {

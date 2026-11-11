@@ -31,10 +31,10 @@ function toAuthedUser(row: UserRow): AuthedUser {
   return { id: row.id, username: row.username };
 }
 
-export function registerUser(
+export async function registerUser(
   username: string,
   password: string,
-): { ok: true; user: AuthedUser } | { ok: false; error: string } {
+): Promise<{ ok: true; user: AuthedUser } | { ok: false; error: string }> {
   const cleanUsername = validUsername(username);
   if (!cleanUsername) {
     return { ok: false, error: `Username must be ${MIN_USERNAME_LENGTH}-${MAX_NAME_LENGTH} letters, digits, - or _.` };
@@ -43,12 +43,12 @@ export function registerUser(
     return { ok: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
   }
   const usernameLower = cleanUsername.toLowerCase();
-  if (getUserByUsernameLower(usernameLower)) {
+  if (await getUserByUsernameLower(usernameLower)) {
     return { ok: false, error: "Username already taken." };
   }
   const { hash, salt } = hashPassword(password);
   try {
-    const id = insertUser(cleanUsername, usernameLower, hash, salt);
+    const id = await insertUser(cleanUsername, usernameLower, hash, salt);
     return { ok: true, user: { id, username: cleanUsername } };
   } catch (err) {
     if (err instanceof Error && err.message.includes("UNIQUE constraint")) {
@@ -58,11 +58,11 @@ export function registerUser(
   }
 }
 
-export function loginUser(
+export async function loginUser(
   username: string,
   password: string,
-): { ok: true; user: AuthedUser } | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" } {
-  const row = getUserByUsernameLower(username.trim().toLowerCase());
+): Promise<{ ok: true; user: AuthedUser } | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" | "SERVER_ERROR" }> {
+  const row = await getUserByUsernameLower(username.trim().toLowerCase());
   if (!row) return { ok: false, error: "NOT_FOUND" };
   if (!verifyPassword(password, row.password_salt, row.password_hash)) {
     return { ok: false, error: "WRONG_PASSWORD" };
@@ -70,14 +70,14 @@ export function loginUser(
   return { ok: true, user: toAuthedUser(row) };
 }
 
-export function statsForUser(userId: number) {
-  const row = getUserById(userId);
+export async function statsForUser(userId: number) {
+  const row = await getUserById(userId);
   if (!row) return null;
   return toPlayerStats(row);
 }
 
 // In-memory only — sessions reset on server restart, matching the rest of this
-// prototype's "everything resets" ethos. Only the SQLite stats data is durable.
+// prototype's "everything resets" ethos. Only the database stats data is durable.
 const sessions = new Map<string, AuthedUser>();
 
 export function createSession(user: AuthedUser): string {

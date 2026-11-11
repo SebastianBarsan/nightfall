@@ -639,11 +639,16 @@ function finalizeReveal(
           }
         : null,
   };
-  const updatedStats = recordGameStats(statsInput);
-  for (const seat of room.seats) {
-    const stats = updatedStats.get(seat.userId);
-    if (stats) io.to(seat.socketId).emit("stats:update", { stats });
-  }
+  // Fire-and-forget: the reveal broadcast shouldn't wait on the database round-trip.
+  const seats = [...room.seats];
+  recordGameStats(statsInput)
+    .then((updatedStats) => {
+      for (const seat of seats) {
+        const stats = updatedStats.get(seat.userId);
+        if (stats) io.to(seat.socketId).emit("stats:update", { stats });
+      }
+    })
+    .catch((err) => console.error("Failed to record game stats:", err));
 
   broadcastState(io, room);
 }

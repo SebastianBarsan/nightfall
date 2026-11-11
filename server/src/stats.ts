@@ -60,11 +60,11 @@ export interface GameStatsInput {
 
 /** Applies one completed game's outcome to every involved account and returns each
  * account's freshly recomputed stats, keyed by userId, for targeted `stats:update` emits. */
-export function recordGameStats(input: GameStatsInput): Map<number, PlayerStats> {
+export async function recordGameStats(input: GameStatsInput): Promise<Map<number, PlayerStats>> {
   const updated = new Map<number, PlayerStats>();
 
   for (const player of input.players) {
-    const row = getUserById(player.userId);
+    const row = await getUserById(player.userId);
     if (!row) continue;
 
     row.games_played += 1;
@@ -98,7 +98,7 @@ export function recordGameStats(input: GameStatsInput): Map<number, PlayerStats>
       }
     }
 
-    updateUserStats(row);
+    await updateUserStats(row);
     updated.set(player.userId, toPlayerStats(row));
   }
 

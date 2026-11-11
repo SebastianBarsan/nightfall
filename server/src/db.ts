@@ -1,15 +1,24 @@
-import { DatabaseSync } from "node:sqlite";
+import { createClient, type InValue } from "@libsql/client";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const dataDir = join(here, "..", "data");
-mkdirSync(dataDir, { recursive: true });
+// In production, point TURSO_DATABASE_URL (+ TURSO_AUTH_TOKEN) at a hosted Turso
+// database so data survives restarts on hosts without a persistent disk. Without
+// it, fall back to a local SQLite file for development.
+function localDbUrl(): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const dataDir = join(here, "..", "data");
+  mkdirSync(dataDir, { recursive: true });
+  return pathToFileURL(join(dataDir, "nightfall.db")).href;
+}
 
-export const db = new DatabaseSync(join(dataDir, "nightfall.db"));
+export const db = createClient({
+  url: process.env.TURSO_DATABASE_URL || localDbUrl(),
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
-db.exec(`
+await db.execute(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL,
@@ -57,13 +66,7 @@ export interface UserRow {
   ending_role_counts: string;
 }
 
-const insertUserStmt = db.prepare(
-  `INSERT INTO users (username, username_lower, password_hash, password_salt, created_at)
-   VALUES (?, ?, ?, ?, ?)`,
-);
-const getUserByUsernameLowerStmt = db.prepare(`SELECT * FROM users WHERE username_lower = ?`);
-const getUserByIdStmt = db.prepare(`SELECT * FROM users WHERE id = ?`);
-const updateUserStatsStmt = db.prepare(`
+const UPDATE_USER_STATS_SQL = `
   UPDATE users SET
     games_played = ?, wins = ?, losses = ?,
     wins_good = ?, wins_evil = ?, wins_jester = ?,
@@ -71,37 +74,54 @@ const updateUserStatsStmt = db.prepare(`
     mvp_count = ?, current_win_streak = ?, longest_win_streak = ?,
     starting_role_counts = ?, ending_role_counts = ?
   WHERE id = ?
-`);
+`;
 
-export function insertUser(username: string, usernameLower: string, passwordHash: string, passwordSalt: string): number {
-  const result = insertUserStmt.run(username, usernameLower, passwordHash, passwordSalt, Date.now());
+async function getOne(sql: string, args: InValue[]): Promise<UserRow | undefined> {
+  const result = await db.execute({ sql, args });
+  return result.rows[0] as unknown as UserRow | undefined;
+}
+
+export async function insertUser(
+  username: string,
+  usernameLower: string,
+  passwordHash: string,
+  passwordSalt: string,
+): Promise<number> {
+  const result = await db.execute({
+    sql: `INSERT INTO users (username, username_lower, password_hash, password_salt, created_at)
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [username, usernameLower, passwordHash, passwordSalt, Date.now()],
+  });
   return Number(result.lastInsertRowid);
 }
 
-export function getUserByUsernameLower(usernameLower: string): UserRow | undefined {
-  return getUserByUsernameLowerStmt.get(usernameLower) as UserRow | undefined;
+export function getUserByUsernameLower(usernameLower: string): Promise<UserRow | undefined> {
+  return getOne(`SELECT * FROM users WHERE username_lower = ?`, [usernameLower]);
 }
 
-export function getUserById(id: number): UserRow | undefined {
-  return getUserByIdStmt.get(id) as UserRow | undefined;
+export function getUserById(id: number): Promise<UserRow | undefined> {
+  return getOne(`SELECT * FROM users WHERE id = ?`, [id]);
 }
 
-export function updateUserStats(row: UserRow): void {
-  updateUserStatsStmt.run(
-    row.games_played,
-    row.wins,
-    row.losses,
-    row.wins_good,
-    row.wins_evil,
-    row.wins_jester,
-    row.vampires_eliminated_as_hunter,
-    row.hunter_shots_taken,
-    row.hunter_shots_hit,
-    row.mvp_count,
-    row.current_win_streak,
-    row.longest_win_streak,
-    row.starting_role_counts,
-    row.ending_role_counts,
-    row.id,
-  );
+export async function updateUserStats(row: UserRow): Promise<void> {
+  await db.execute({
+    sql: UPDATE_USER_STATS_SQL,
+    args: [
+      row.games_played,
+      row.wins,
+      row.losses,
+      row.wins_good,
+      row.wins_evil,
+      row.wins_jester,
+      row.vampires_eliminated_as_hunter,
+      row.hunter_shots_taken,
+      row.hunter_shots_hit,
+      row.mvp_count,
+      row.current_win_streak,
+      row.longest_win_streak,
+      row.starting_role_counts,
+      row.ending_role_counts,
+      row.id,
+    ],
+  });
 }
