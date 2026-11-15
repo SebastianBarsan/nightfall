@@ -5,6 +5,7 @@ import {
   ClientToServerEvents,
   GamePhase,
   MAX_PLAYERS,
+  RoleCounts,
   ServerToClientEvents,
 } from "@nightfall/shared";
 import {
@@ -54,6 +55,40 @@ interface SocketData {
   username: string | null;
 }
 
+// Clients can send anything, so every payload is checked here before it reaches game logic.
+type Payload = Record<string, unknown>;
+type Ack = (res: unknown) => void;
+
+function payloadOf(raw: unknown): Payload {
+  return raw !== null && typeof raw === "object" ? (raw as Payload) : {};
+}
+
+function ackOf(raw: unknown): Ack {
+  return typeof raw === "function" ? (raw as Ack) : () => {};
+}
+
+function isString(v: unknown): v is string {
+  return typeof v === "string";
+}
+
+function isInt(v: unknown): v is number {
+  return Number.isInteger(v);
+}
+
+// One bad event must never take down the whole server, so any throw or rejection is logged and dropped.
+function guard<A extends unknown[]>(event: string, handler: (...args: A) => unknown) {
+  return (...args: A) => {
+    try {
+      const result = handler(...args);
+      if (result instanceof Promise) {
+        result.catch((err) => console.error(`${event} handler failed:`, err));
+      }
+    } catch (err) {
+      console.error(`${event} handler failed:`, err);
+    }
+  };
+}
+
 const io = new Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>(app.server, {
   cors: { origin: CLIENT_ORIGIN },
 });
@@ -62,7 +97,10 @@ io.on("connection", (socket) => {
   socket.data.userId = null;
   socket.data.username = null;
 
-  socket.on("auth:register", async ({ username, password }, cb) => {
+  socket.on("auth:register", guard("auth:register", async (raw: unknown, rawCb: unknown) => {
+    const cb = ackOf(rawCb);
+    const { username, password } = payloadOf(raw);
+    if (!isString(username) || !isString(password)) return cb({ ok: false, error: "Invalid request." });
     try {
       const res = await registerUser(username, password);
       if (!res.ok) return cb(res);
@@ -74,9 +112,12 @@ io.on("connection", (socket) => {
       console.error("auth:register failed:", err);
       cb({ ok: false, error: "Server error. Please try again." });
     }
-  });
+  }));
 
-  socket.on("auth:login", async ({ username, password }, cb) => {
+  socket.on("auth:login", guard("auth:login", async (raw: unknown, rawCb: unknown) => {
+    const cb = ackOf(rawCb);
+    const { username, password } = payloadOf(raw);
+    if (!isString(username) || !isString(password)) return cb({ ok: false, error: "NOT_FOUND" });
     try {
       const res = await loginUser(username, password);
       if (!res.ok) return cb(res);
@@ -88,9 +129,12 @@ io.on("connection", (socket) => {
       console.error("auth:login failed:", err);
       cb({ ok: false, error: "SERVER_ERROR" });
     }
-  });
+  }));
 
-  socket.on("auth:resume", async ({ token }, cb) => {
+  socket.on("auth:resume", guard("auth:resume", async (raw: unknown, rawCb: unknown) => {
+    const cb = ackOf(rawCb);
+    const { token } = payloadOf(raw);
+    if (!isString(token)) return cb({ ok: false, error: "Session expired. Please log in again." });
     try {
       const user = resumeSession(token);
       if (!user) return cb({ ok: false, error: "Session expired. Please log in again." });
@@ -101,24 +145,29 @@ io.on("connection", (socket) => {
       console.error("auth:resume failed:", err);
       cb({ ok: false, error: "Server error. Please try again." });
     }
-  });
+  }));
 
-  socket.on("auth:logout", ({ token }) => {
-    destroySession(token);
+  socket.on("auth:logout", guard("auth:logout", (raw: unknown) => {
+    const { token } = payloadOf(raw);
+    if (isString(token)) destroySession(token);
     socket.data.userId = null;
     socket.data.username = null;
-  });
+  }));
 
-  socket.on("room:create", (cb) => {
+  socket.on("room:create", guard("room:create", (rawCb: unknown) => {
+    const cb = ackOf(rawCb);
     if (!socket.data.userId || !socket.data.username) return cb({ ok: false, error: "Please log in first." });
     const room = createRoom(socket.id, socket.data.username, socket.data.userId);
     socket.join(room.code);
     cb({ ok: true, code: room.code });
     broadcastState(io, room);
-  });
+  }));
 
-  socket.on("room:join", ({ code }, cb) => {
+  socket.on("room:join", guard("room:join", (raw: unknown, rawCb: unknown) => {
+    const cb = ackOf(rawCb);
+    const { code } = payloadOf(raw);
     if (!socket.data.userId || !socket.data.username) return cb({ ok: false, error: "Please log in first." });
+    if (!isString(code)) return cb({ ok: false, error: "Room not found." });
     const room = getRoom(code);
     if (!room) return cb({ ok: false, error: "Room not found." });
     if (room.phase !== GamePhase.LOBBY) return cb({ ok: false, error: "Game already in progress." });
@@ -128,70 +177,88 @@ io.on("connection", (socket) => {
     repairRoleCounts(room);
     cb({ ok: true });
     broadcastState(io, room);
-  });
+  }));
 
-  socket.on("room:start", () => {
+  socket.on("room:start", guard("room:start", () => {
     const room = findRoomBySocket(socket.id);
     if (!room) return;
     startGame(io, room, socket.id);
-  });
+  }));
 
-  socket.on("room:configureRoles", ({ roleCounts }) => {
+  socket.on("room:configureRoles", guard("room:configureRoles", (raw: unknown) => {
+    const { roleCounts } = payloadOf(raw);
+    if (roleCounts === null || typeof roleCounts !== "object") return;
     const room = findRoomBySocket(socket.id);
-    if (room) configureRoles(io, room, socket.id, roleCounts);
-  });
+    // configureRoles clamps each count itself, so only the object shape needs checking here.
+    if (room) configureRoles(io, room, socket.id, roleCounts as RoleCounts);
+  }));
 
-  socket.on("room:playAgain", () => {
+  socket.on("room:playAgain", guard("room:playAgain", () => {
     const room = findRoomBySocket(socket.id);
     if (!room) return;
     resetForPlayAgain(io, room, socket.id);
-  });
+  }));
 
-  socket.on("night:werewolf:viewCenter", ({ centerIndex }) => {
+  socket.on("night:werewolf:viewCenter", guard("night:werewolf:viewCenter", (raw: unknown) => {
+    const { centerIndex } = payloadOf(raw);
+    if (!isInt(centerIndex)) return;
     const room = findRoomBySocket(socket.id);
     if (room) handleWerewolfViewCenter(io, room, socket.id, centerIndex);
-  });
+  }));
 
-  socket.on("night:seer:target", ({ playerSeat, centerIndices }) => {
+  socket.on("night:seer:target", guard("night:seer:target", (raw: unknown) => {
+    const { playerSeat, centerIndices } = payloadOf(raw);
+    if (playerSeat !== null && !isInt(playerSeat)) return;
+    if (centerIndices !== null && !(Array.isArray(centerIndices) && centerIndices.every(isInt))) return;
     const room = findRoomBySocket(socket.id);
     if (room) handleSeerTarget(io, room, socket.id, playerSeat, centerIndices);
-  });
+  }));
 
-  socket.on("night:robber:target", ({ playerSeat }) => {
+  socket.on("night:robber:target", guard("night:robber:target", (raw: unknown) => {
+    const { playerSeat } = payloadOf(raw);
+    if (!isInt(playerSeat)) return;
     const room = findRoomBySocket(socket.id);
     if (room) handleRobberTarget(io, room, socket.id, playerSeat);
-  });
+  }));
 
-  socket.on("night:troublemaker:swap", ({ seatA, seatB }) => {
+  socket.on("night:troublemaker:swap", guard("night:troublemaker:swap", (raw: unknown) => {
+    const { seatA, seatB } = payloadOf(raw);
+    if (!isInt(seatA) || !isInt(seatB)) return;
     const room = findRoomBySocket(socket.id);
     if (room) handleTroublemakerSwap(io, room, socket.id, seatA, seatB);
-  });
+  }));
 
-  socket.on("night:insomniac:reveal", () => {
+  socket.on("night:insomniac:reveal", guard("night:insomniac:reveal", () => {
     const room = findRoomBySocket(socket.id);
     if (room) handleInsomniacReveal(io, room, socket.id);
-  });
+  }));
 
-  socket.on("day:chat", ({ text }) => {
+  socket.on("day:chat", guard("day:chat", (raw: unknown) => {
+    const { text } = payloadOf(raw);
+    if (!isString(text)) return;
     const room = findRoomBySocket(socket.id);
     if (room) handleChat(io, room, socket.id, text);
-  });
+  }));
 
-  socket.on("vote:cast", ({ targetSocketId }) => {
+  socket.on("vote:cast", guard("vote:cast", (raw: unknown) => {
+    const { targetSocketId } = payloadOf(raw);
+    if (!isString(targetSocketId)) return;
     const room = findRoomBySocket(socket.id);
     if (room) handleVoteCast(io, room, socket.id, targetSocketId);
-  });
+  }));
 
-  socket.on("hunter:target", ({ targetSocketId }) => {
+  socket.on("hunter:target", guard("hunter:target", (raw: unknown) => {
+    const { targetSocketId } = payloadOf(raw);
+    if (!isString(targetSocketId)) return;
     const room = findRoomBySocket(socket.id);
     if (room) handleHunterTarget(io, room, socket.id, targetSocketId);
-  });
+  }));
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", guard("disconnect", () => {
     const room = findRoomBySocket(socket.id);
     if (!room) return;
     handleDisconnect(room, socket.id);
-  });
+  }));
 });
 
 function handleDisconnect(room: ServerRoom, socketId: string): void {
