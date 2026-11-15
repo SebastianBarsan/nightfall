@@ -1,91 +1,90 @@
 # Nightfall
 
-A real-time social deduction game (One Night Werewolf-style) built as a prototype:
-React + TypeScript frontend, Node.js + Fastify + Socket.io backend. Game state
-itself is still held **in-memory** on the server (no Redis/PostgreSQL — see "Scope"
-below); player accounts and stats are the one piece of durable state, in a local
-SQLite file.
+Nightfall is a social deduction game you play in the browser with 3 to 7
+friends. Everyone gets a secret role. During the night, some roles get to peek
+at cards or swap them around. Then the sun comes up and you have one day to
+argue it out and vote off a Vampire, if you can work out who it is.
 
-## Running it
+It's built with React and TypeScript on the front end, and Node with Fastify
+and Socket.IO on the back end.
+
+## Playing locally
 
 ```bash
-npm install         # from the nightfall/ root — installs all 3 workspaces
-npm run dev          # runs server (port 3001) and client (port 5173) together
+npm install
+npm run dev
 ```
 
-Then open http://localhost:5173 in **multiple browser tabs/windows** (one per
-player — you need 3 to 7 to start a game) and play through create/join → night
-→ day → voting → reveal.
+That starts the server on port 3001 and the client on port 5173. Open
+http://localhost:5173 in a few browser tabs, one for each player, and you're
+good to go. You'll need at least 3 players to start a game.
 
-Run them separately if you prefer: `npm run dev:server` / `npm run dev:client`.
+If you'd rather run the two halves in separate terminals, use
+`npm run dev:server` and `npm run dev:client`.
 
-## Project layout
+## Deploying
 
-```
-shared/   role definitions, deck-building, and the full Socket.io event contract
-          (types shared verbatim between client and server)
-server/   Fastify + Socket.io backend — the authoritative game state machine
-          lives in server/src/gameEngine.ts, in-memory room store in roomStore.ts;
-          accounts/auth in auth.ts, the SQLite layer in db.ts, and per-account
-          stats in stats.ts
-client/   React + TS + Vite frontend, one screen per game phase (src/screens/)
-```
+The server and the client are deployed separately.
 
-## Scope, and deviations from the original spec
+For the server, run `npm install` and then `npm start`, and set these
+environment variables:
 
-This was built as a **prototype-first** pass, per explicit choice at kickoff:
+- `PORT`: the port to listen on. Most hosts set this for you.
+- `CLIENT_ORIGIN`: the exact URL your client is served from.
+- `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`: a Turso database for accounts
+  and stats. If you leave these out, the server keeps everything in a local
+  SQLite file at `server/data/nightfall.db`.
 
-- **No Redis / PostgreSQL / Prisma.** Room and game state live in a `Map` in
-  the server process. Everything resets if the server restarts. No user
-  accounts, XP, coins, or cosmetics are persisted — the post-game JSON audit
-  log (`initial_array`, `action_log`, `final_array`, `winning_faction`,
-  `mvp_stats`) is generated and sent to clients, not written to a database.
-- **No WebRTC voice chat.** Day/Voting phase mute/unmute is not implemented at
-  all (explicitly out of scope). A lightweight text chat during the Day phase
-  stands in for discussion instead.
-- **Simple username+password accounts, SQLite-backed.** Every player registers
-  (or logs in) on the home screen before creating/joining a room; the username
-  *is* the in-game display name. Passwords are hashed with Node's built-in
-  `crypto.scryptSync` (random salt per user) — no bcrypt dependency needed.
-  Per-account stats (games played, wins/losses by faction, Hunter shot
-  accuracy, MVP count, win streaks, starting/ending role breakdowns) persist in
-  a single SQLite file (`server/data/nightfall.db`, via Node's built-in
-  `node:sqlite`) so they survive server restarts — the one piece of state in
-  this project that isn't purely in-memory. Login **sessions** are still
-  in-memory only and reset on server restart (matching everything else here);
-  only the stats themselves are durable.
-- **No password recovery, by design.** If you forget your password, there is
-  no reset flow — pick a new username. Keeps auth intentionally minimal for a
-  prototype with no email collection at all.
-- **Player count is 3–7.** The host configures the role deck per game from
-  the lobby (Werewolf count, optional Insomniac/Hunter, Villager count) —
-  Seer, Robber, Troublemaker, and Tanner are always exactly 1 each. The
-  server enforces `MIN_PLAYERS = 3`/`MAX_PLAYERS = 7`, exactly 2 Werewolves
-  (a 3-player host may drop to 1), at most 2 Villagers, and that the chosen
-  counts add up to exactly `N + 3` cards before a game can start.
-- **Room codes are `WORD-DDDD`** (e.g. `WOLF-4821`), matching the example in
-  the spec literally, even though the spec's prose says "4-character."
-- **No turn-timing obfuscation.** The spec's `SPAWN_COIN`/`TAP_COIN` dummy-
-  traffic pattern (decoy socket pings to mask which client is acting) was
-  scrapped entirely; every `NIGHT_ORDER` step already always runs for the
-  same fixed duration regardless of who holds the role, which is the
-  information leak that pattern would otherwise have been guarding against.
-- **Win-condition edge case:** if zero Werewolves are dealt to any player (both
-  in the center) and someone is still eliminated, the spec only defines the
-  Village-loses side of that case, not an explicit Werewolf-wins rule for it.
-  This implementation leaves that as "no faction wins" rather than inventing a
-  rule the spec didn't state.
-- **Actor identity for night actions is resolved from each seat's *original*
-  dealt role**, not whatever card is currently at that seat — matching how
-  the real game works (a player acts as the role they were shown at the start
-  of the night, even if Robber/Troublemaker later moves that card elsewhere).
-  Card *values* are still read/written on the live, mutating array.
+For the client, run `npm install && npm run build:client` and serve the
+`client/dist` folder. Set `VITE_SERVER_URL` to your server's URL. It gets baked
+in when the client is built, so if you change it you'll need to rebuild.
 
-## Verified
+## What's where
 
-Both packages type-check cleanly (`tsc --noEmit` / `tsc -b`). The full game
-loop — lobby → sequential night roles (including skipped center-only roles) →
-day → voting → win evaluation → per-player results/action log — was verified
-end-to-end with an automated 5-client Socket.io simulation. The UI itself
-hasn't been visually tested in a browser (no browser automation available in
-this session) — worth clicking through yourself before trusting it fully.
+- `shared/` holds the roles, deck building, and the event types the client and
+  server both use.
+- `server/` is the backend. The game logic lives in `gameEngine.ts`, rooms in
+  `roomStore.ts`, accounts in `auth.ts`, and the database code in `db.ts` and
+  `stats.ts`.
+- `client/` is the React app, with one screen per phase of the game in
+  `src/screens/`.
+
+## The roles
+
+There are eight roles: Vampire, Oracle, Thief, Troublemaker, Sentry, Hunter,
+Jester, and Mortal. The Oracle, Thief, Troublemaker, and Jester are in every
+game. The host picks the rest in the lobby: how many Vampires and Mortals, and
+whether to include the Sentry and the Hunter.
+
+There are always 3 more cards than players, and the leftover 3 sit face down in
+the middle. A game has 2 Vampires (you can drop to 1 with only 3 players) and
+at most 2 Mortals.
+
+You always act as the role you were dealt at the start of the night, even if a
+Thief or Troublemaker has moved your card by the time your turn comes around.
+
+In the code, the roles still go by their classic names, like `WEREWOLF`,
+`SEER`, and `ROBBER`.
+
+## A few things to know
+
+- Games only live in the server's memory, so if the server restarts, any games
+  in progress are gone.
+- Accounts are just a username and password, and your username is your name in
+  the game. There's no email and no password reset, so if you forget your
+  password you'll have to pick a new name.
+- Your stats stick around: games played, wins and losses, Hunter accuracy,
+  MVPs, win streaks, and which roles you've had.
+- Logins aren't saved anywhere, so a server restart signs everyone out. Your
+  account and stats are still there when you log back in.
+- The server is in charge of everything. It holds the cards, checks every move,
+  and only tells each player what they're allowed to know. Login attempts are
+  rate limited too.
+- Every night step takes the same amount of time, whether or not anyone holds
+  that role, so you can't work out who's who from the timing.
+- There's a text chat during the day, but no voice chat.
+- Room codes look like `WOLF-4821`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
