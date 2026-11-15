@@ -3,7 +3,7 @@ import type { ChatMessage, PlayerStats, RoomSnapshot } from "./types.js";
 
 export type AuthOk = { ok: true; token: string; username: string; stats: PlayerStats };
 export type AuthResult = AuthOk | { ok: false; error: string };
-export type LoginResult = AuthOk | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" | "SERVER_ERROR" };
+export type LoginResult = AuthOk | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" | "SERVER_ERROR" | "RATE_LIMITED" };
 
 // ---- Client -> Server ----
 export interface ClientToServerEvents {

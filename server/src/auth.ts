@@ -1,5 +1,5 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { MAX_NAME_LENGTH, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH, USERNAME_PATTERN } from "@nightfall/shared";
+import { MAX_NAME_LENGTH, MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, MIN_USERNAME_LENGTH, USERNAME_PATTERN } from "@nightfall/shared";
 import { getUserById, getUserByUsernameLower, insertUser, UserRow } from "./db.js";
 import { toPlayerStats } from "./stats.js";
 
@@ -42,6 +42,9 @@ export async function registerUser(
   if (password.length < MIN_PASSWORD_LENGTH) {
     return { ok: false, error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
   }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    return { ok: false, error: `Password must be at most ${MAX_PASSWORD_LENGTH} characters.` };
+  }
   const usernameLower = cleanUsername.toLowerCase();
   if (await getUserByUsernameLower(usernameLower)) {
     return { ok: false, error: "Username already taken." };
@@ -64,6 +67,8 @@ export async function loginUser(
 ): Promise<{ ok: true; user: AuthedUser } | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" | "SERVER_ERROR" }> {
   const row = await getUserByUsernameLower(username.trim().toLowerCase());
   if (!row) return { ok: false, error: "NOT_FOUND" };
+  // No account can have a longer password, so skip hashing a huge input.
+  if (password.length > MAX_PASSWORD_LENGTH) return { ok: false, error: "WRONG_PASSWORD" };
   if (!verifyPassword(password, row.password_salt, row.password_hash)) {
     return { ok: false, error: "WRONG_PASSWORD" };
   }

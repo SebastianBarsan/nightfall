@@ -11,7 +11,7 @@ export function AuthPopup({
   onClose,
 }: {
   username: string;
-  login: (username: string, password: string) => Promise<{ ok: true } | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" | "SERVER_ERROR" }>;
+  login: (username: string, password: string) => Promise<{ ok: true } | { ok: false; error: "NOT_FOUND" | "WRONG_PASSWORD" | "SERVER_ERROR" | "RATE_LIMITED" }>;
   register: (username: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   onSuccess: () => void;
   onClose: () => void;
@@ -33,6 +33,8 @@ export function AuthPopup({
       setStage("confirmCreate");
     } else if (res.error === "SERVER_ERROR") {
       setError("Server error. Please try again.");
+    } else if (res.error === "RATE_LIMITED") {
+      setError("Too many attempts. Please wait a few minutes and try again.");
     } else {
       setError("Incorrect password.");
       setPassword("");

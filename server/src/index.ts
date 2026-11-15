@@ -39,6 +39,7 @@ import {
   resetForPlayAgain,
   startGame,
 } from "./gameEngine.js";
+import { RateLimiter } from "./rateLimit.js";
 
 const PORT = Number(process.env.PORT ?? 3001);
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
@@ -75,6 +76,19 @@ function isInt(v: unknown): v is number {
   return Number.isInteger(v);
 }
 
+// Password hashing is deliberately slow, so login/register attempts are capped per client IP, and
+// failed logins are capped per username so a single account can't be brute-forced from many IPs.
+// The IP limit is generous because players on the same Wi-Fi share one address.
+const authAttemptsPerIp = new RateLimiter(30, 10 * 60_000);
+const failedLoginsPerUser = new RateLimiter(10, 15 * 60_000);
+
+function clientIp(socket: { handshake: { address: string; headers: Record<string, unknown> } }): string {
+  // Behind Render's proxy the real client address is the first X-Forwarded-For entry.
+  const forwarded = socket.handshake.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) return forwarded.split(",")[0].trim();
+  return socket.handshake.address;
+}
+
 // One bad event must never take down the whole server, so any throw or rejection is logged and dropped.
 function guard<A extends unknown[]>(event: string, handler: (...args: A) => unknown) {
   return (...args: A) => {
@@ -101,6 +115,11 @@ io.on("connection", (socket) => {
     const cb = ackOf(rawCb);
     const { username, password } = payloadOf(raw);
     if (!isString(username) || !isString(password)) return cb({ ok: false, error: "Invalid request." });
+    const ip = clientIp(socket);
+    if (authAttemptsPerIp.isLimited(ip)) {
+      return cb({ ok: false, error: "Too many attempts. Please wait a few minutes and try again." });
+    }
+    authAttemptsPerIp.record(ip);
     try {
       const res = await registerUser(username, password);
       if (!res.ok) return cb(res);
@@ -118,9 +137,18 @@ io.on("connection", (socket) => {
     const cb = ackOf(rawCb);
     const { username, password } = payloadOf(raw);
     if (!isString(username) || !isString(password)) return cb({ ok: false, error: "NOT_FOUND" });
+    const ip = clientIp(socket);
+    const userKey = username.trim().toLowerCase();
+    if (authAttemptsPerIp.isLimited(ip) || failedLoginsPerUser.isLimited(userKey)) {
+      return cb({ ok: false, error: "RATE_LIMITED" });
+    }
+    authAttemptsPerIp.record(ip);
     try {
       const res = await loginUser(username, password);
-      if (!res.ok) return cb(res);
+      if (!res.ok) {
+        if (res.error === "WRONG_PASSWORD") failedLoginsPerUser.record(userKey);
+        return cb(res);
+      }
       const token = createSession(res.user);
       socket.data.userId = res.user.id;
       socket.data.username = res.user.username;

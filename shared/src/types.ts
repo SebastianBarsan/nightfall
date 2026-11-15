@@ -95,6 +95,7 @@ export const MIN_NAME_LENGTH = 1;
 export const MAX_NAME_LENGTH = 20;
 export const MIN_USERNAME_LENGTH = 3;
 export const MIN_PASSWORD_LENGTH = 4;
+export const MAX_PASSWORD_LENGTH = 128;
 /** Letters, digits, underscore, hyphen only — keeps seat labels readable. */
 export const USERNAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 export const DEFAULT_DAY_DURATION_SEC = 30;
