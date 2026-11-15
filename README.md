@@ -1,5 +1,7 @@
 # Nightfall
 
+**Play now with friends at https://nightfall-lho3.onrender.com/**
+
 Nightfall is a social deduction game you play in the browser with 3 to 7
 friends. Everyone gets a secret role. During the night, some roles get to peek
 at cards or swap them around. Then the sun comes up and you have one day to
